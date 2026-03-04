@@ -60,7 +60,7 @@ Please include a minimal reproduction.
 ## Code Style
 
 - TypeScript strict mode throughout
-- No runtime dependencies in `@ultitabs/core`
+- No runtime dependencies in `ultitabs`
 - CSS uses logical properties for RTL support
 - All public APIs must be documented in the README
 

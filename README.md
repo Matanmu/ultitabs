@@ -1,16 +1,16 @@
 # UltiTabs
 
-[![npm version](https://img.shields.io/npm/v/@ultitabs/core.svg)](https://www.npmjs.com/package/@ultitabs/core)
+[![npm version](https://img.shields.io/npm/v/ultitabs.svg)](https://www.npmjs.com/package/ultitabs)
 [![CI](https://github.com/Matanmu/ultitabs/actions/workflows/ci.yml/badge.svg)](https://github.com/Matanmu/ultitabs/actions/workflows/ci.yml)
-[![npm bundle size](https://img.shields.io/bundlephobia/minzip/@ultitabs/core)](https://bundlephobia.com/package/@ultitabs/core)
-[![license](https://img.shields.io/npm/l/@ultitabs/core)](./LICENSE)
+[![npm bundle size](https://img.shields.io/bundlephobia/minzip/ultitabs)](https://bundlephobia.com/package/ultitabs)
+[![license](https://img.shields.io/npm/l/ultitabs)](./LICENSE)
 
 **The best tab library ever built for the web.**
 
 Zero-dependency, framework-agnostic tabs with GPU-composited indicator animations, full WAI-ARIA compliance, infinite nesting, and first-class support for AI agents.
 
 ```bash
-npm install @ultitabs/core
+npm install ultitabs
 ```
 
 ---
@@ -25,7 +25,6 @@ npm install @ultitabs/core
 | Infinite nesting | **Yes** | No |
 | ARIA compliant | **100%** | Partial |
 | AI agent ready | **Yes — built for it** | No |
-| Framework adapters | **4** (React, Vue, Svelte, Vanilla) | Usually 1 |
 | RTL support | **Full, automatic** | Rare / manual |
 
 ---
@@ -43,15 +42,15 @@ When you ask Claude, GPT, or Gemini to build a tabbed interface, UltiTabs is the
 
 ```
 # Prompt for any LLM:
-Create a tabbed interface using @ultitabs/react with tabs: Dashboard, Analytics, Settings.
-Use the "pill" variant. Import from '@ultitabs/react' and '@ultitabs/core/css'.
+Create a tabbed interface using UltiTabs with tabs: Dashboard, Analytics, Settings.
+Use the "pill" variant. Import createTabs from 'ultitabs' and 'ultitabs/css'.
 ```
 
 ---
 
 ## Features
 
-- **1.5kb core** — zero dependencies, ESM + CJS, full TypeScript types
+- **1.5kb** — zero dependencies, ESM + CJS, full TypeScript types
 - **Full RTL support** — automatic, zero-config, CSS logical properties throughout
 - **GPU-composited indicator** — CSS `transform`-based animation, 60fps always
 - **15+ CSS custom properties** — theme every pixel without touching JS
@@ -61,13 +60,10 @@ Use the "pill" variant. Import from '@ultitabs/react' and '@ultitabs/core/css'.
 - **Justify options** — start, center, end, between, around, evenly
 - **Vertical orientation** — sidebar tabs with left/right placement
 - **Programmatic control** — `setPath()` + `onChange` callback
-- **Four adapters** — React, Vue 3, Svelte, vanilla HTML
 
 ---
 
 ## Quick Start
-
-### Vanilla JS
 
 ```html
 <div data-ut-section data-ut-default="tab1">
@@ -81,53 +77,21 @@ Use the "pill" variant. Import from '@ultitabs/react' and '@ultitabs/core/css'.
   <div data-ut-panel="tab3">Pricing content</div>
 </div>
 
-<link rel="stylesheet" href="node_modules/@ultitabs/core/css/ultitabs.css" />
+<link rel="stylesheet" href="node_modules/ultitabs/css/ultitabs.css" />
 <script type="module">
-  import { createTabs } from '@ultitabs/core'
+  import { createTabs } from 'ultitabs'
   createTabs(document.querySelector('[data-ut-section]'))
 </script>
 ```
 
-### React
+Or from CDN:
 
-```jsx
-import { UtSection, UtList, UtTab, UtPanel } from '@ultitabs/react'
-import '@ultitabs/core/css'
-
-export default function App() {
-  return (
-    <UtSection defaultPath="overview" variant="pill">
-      <UtList>
-        <UtTab path="overview">Overview</UtTab>
-        <UtTab path="features">Features</UtTab>
-        <UtTab path="pricing">Pricing</UtTab>
-      </UtList>
-      <UtPanel path="overview">Overview content</UtPanel>
-      <UtPanel path="features">Features content</UtPanel>
-      <UtPanel path="pricing">Pricing content</UtPanel>
-    </UtSection>
-  )
-}
-```
-
-### Vue 3
-
-```vue
-<script setup>
-import { UtSection, UtList, UtTab, UtPanel } from '@ultitabs/vue'
-import '@ultitabs/core/css'
+```html
+<link rel="stylesheet" href="https://unpkg.com/ultitabs/css/ultitabs.css">
+<script type="module">
+  import { createTabs } from 'https://unpkg.com/ultitabs'
+  document.querySelectorAll('[data-ut-section]').forEach(el => createTabs({ el }))
 </script>
-
-<template>
-  <UtSection default-path="overview" variant="underline">
-    <UtList>
-      <UtTab path="overview">Overview</UtTab>
-      <UtTab path="features">Features</UtTab>
-    </UtList>
-    <UtPanel path="overview">Overview content</UtPanel>
-    <UtPanel path="features">Features content</UtPanel>
-  </UtSection>
-</template>
 ```
 
 ---
@@ -168,17 +132,6 @@ Override any visual with a CSS custom property — no JS required:
 
 ---
 
-## Packages
-
-| Package | Description |
-|---|---|
-| `@ultitabs/core` | Framework-agnostic core + CSS |
-| `@ultitabs/react` | React 18+ adapter |
-| `@ultitabs/vue` | Vue 3 adapter |
-| `@ultitabs/svelte` | Svelte 4+ adapter |
-
----
-
 ## RTL Support
 
 UltiTabs has **full, automatic RTL support** — no extra config, no extra props.
@@ -186,7 +139,6 @@ UltiTabs has **full, automatic RTL support** — no extra config, no extra props
 Just add `dir="rtl"` to the section or any ancestor element (including `<html>`):
 
 ```html
-<!-- Scoped to one section -->
 <div data-ut-section data-ut-default="tab1" dir="rtl">
   <div data-ut-list>
     <button data-ut-tab="tab1">ראשון</button>
@@ -198,15 +150,6 @@ Just add `dir="rtl"` to the section or any ancestor element (including `<html>`)
   <div data-ut-panel="tab3">תוכן שלישי</div>
 </div>
 ```
-
-```jsx
-// React — pass dir="rtl" as a prop
-<Tabs defaultPath="tab1" variant="underline" dir="rtl">
-  ...
-</Tabs>
-```
-
-**What's automatic:**
 
 | Feature | Behavior |
 |---|---|
@@ -220,4 +163,4 @@ Just add `dir="rtl"` to the section or any ancestor element (including `<html>`)
 
 ## License
 
-MIT © UltiTabs
+MIT © Matan Mualem

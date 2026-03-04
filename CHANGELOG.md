@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Initial Release
 
-#### `@ultitabs/core`
+#### `ultitabs`
 
 - Zero-dependency core, 1.5 kb minified + gzipped
 - GPU-composited CSS indicator animation (60 fps, no layout thrash)
@@ -20,6 +20,3 @@ All notable changes to this project will be documented in this file.
 - Programmatic control via `setPath()` and `onChange` callback
 - ESM + CJS dual build, full TypeScript types
 
-#### `@ultitabs/react` · `@ultitabs/vue` · `@ultitabs/svelte`
-
-- Package scaffolding published — full adapter implementations coming in v1.1

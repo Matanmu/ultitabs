@@ -1,5 +1,5 @@
 {
-  "name": "@ultitabs/core",
+  "name": "ultitabs",
   "version": "1.0.0",
   "description": "Zero-dependency tab library with GPU-composited animations, full WAI-ARIA, RTL support, and AI-first design",
   "type": "module",
@@ -47,7 +47,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Matanmu/ultitabs.git",
-    "directory": "packages/core"
   },
   "homepage": "https://github.com/Matanmu/ultitabs#readme",
   "bugs": {

@@ -1,0 +1,41 @@
+{
+  "name": "@ultitabs/svelte",
+  "version": "1.0.0",
+  "description": "Svelte 4+ adapter for UltiTabs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "echo 'TODO: not yet implemented'",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@ultitabs/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "svelte": ">=4"
+  },
+  "license": "MIT",
+  "keywords": ["tabs", "svelte", "ui", "aria", "accessible", "animated"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Matanmu/ultitabs.git",
+    "directory": "packages/svelte"
+  },
+  "homepage": "https://github.com/Matanmu/ultitabs#readme",
+  "bugs": {
+    "url": "https://github.com/Matanmu/ultitabs/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

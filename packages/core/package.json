@@ -1,0 +1,54 @@
+{
+  "name": "@ultitabs/core",
+  "version": "1.0.0",
+  "description": "Zero-dependency tab library with GPU-composited animations, full WAI-ARIA, RTL support, and AI-first design",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./css": "./css/ultitabs.css"
+  },
+  "files": ["dist", "css", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "keywords": [
+    "tabs",
+    "tab",
+    "tablist",
+    "tabpanel",
+    "aria",
+    "accessible",
+    "animated",
+    "indicator",
+    "rtl",
+    "zero-dependency",
+    "vanilla",
+    "ui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Matanmu/ultitabs.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/Matanmu/ultitabs#readme",
+  "bugs": {
+    "url": "https://github.com/Matanmu/ultitabs/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

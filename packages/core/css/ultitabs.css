@@ -1,0 +1,243 @@
+/* ultitabs — default styles */
+
+[data-ut-section] {
+  --ut-indicator-color: #3b82f6;
+  --ut-indicator-height: 2px;
+  --ut-indicator-radius: 0;
+  --ut-indicator-duration: 250ms;
+  --ut-indicator-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ut-tab-color: #6b7280;
+  --ut-tab-active-color: #111827;
+  --ut-tab-gap: 0;
+  --ut-tab-padding: 0.625rem 1rem;
+  --ut-tab-font-size: 0.875rem;
+  --ut-tab-font-weight: 500;
+}
+
+/* Tab list */
+[data-ut-list] {
+  position: relative;
+  display: flex;
+  gap: var(--ut-tab-gap);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Justify content */
+[data-ut-justify="start"]   { justify-content: flex-start; }
+[data-ut-justify="center"]  { justify-content: center; }
+[data-ut-justify="end"]     { justify-content: flex-end; }
+[data-ut-justify="between"] { justify-content: space-between; }
+[data-ut-justify="around"]  { justify-content: space-around; }
+[data-ut-justify="evenly"]  { justify-content: space-evenly; }
+
+/* Indicator pseudo-element — base */
+[data-ut-list]::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  transition-duration: var(--ut-indicator-duration);
+  transition-timing-function: var(--ut-indicator-ease);
+}
+
+/* Tab button */
+[data-ut-tab] {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--ut-tab-padding);
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: var(--ut-tab-font-size);
+  font-weight: var(--ut-tab-font-weight);
+  color: var(--ut-tab-color);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--ut-indicator-duration) var(--ut-indicator-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-ut-tab]:focus-visible {
+  outline: 2px solid var(--ut-indicator-color);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+[data-ut-tab][data-ut-active] {
+  color: var(--ut-tab-active-color);
+}
+
+/* Panel */
+[data-ut-panel] {
+  outline: none;
+}
+
+[data-ut-panel][hidden] {
+  display: none;
+}
+
+/* ── Variant: underline ── */
+[data-ut-variant="underline"] [data-ut-list] {
+  border-block-end: 1px solid #e5e7eb;
+}
+
+[data-ut-variant="underline"] [data-ut-list]::after {
+  inset-block-end: 0;
+  inset-block-start: auto;
+  inset-inline-start: var(--ut-indicator-left, 0);
+  inset-inline-end: auto;
+  width: var(--ut-indicator-width, 0);
+  height: var(--ut-indicator-height);
+  background: var(--ut-indicator-color);
+  border-radius: var(--ut-indicator-radius);
+  transition-property: inset-inline-start, width;
+}
+
+/* ── Variant: pill ── */
+[data-ut-variant="pill"] {
+  --ut-indicator-radius: 9999px;
+  --ut-tab-gap: 4px;
+}
+
+[data-ut-variant="pill"] [data-ut-list] {
+  background: #f3f4f6;
+  border-radius: 9999px;
+  padding: 4px;
+}
+
+[data-ut-variant="pill"] [data-ut-list]::after {
+  inset-block-start: var(--ut-indicator-top, 0);
+  inset-block-end: auto;
+  inset-inline-start: var(--ut-indicator-left, 0);
+  inset-inline-end: auto;
+  width: var(--ut-indicator-width, 0);
+  height: var(--ut-indicator-height-val, 0);
+  background: #fff;
+  border-radius: var(--ut-indicator-radius);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 0;
+  transition-property: inset-inline-start, inset-block-start, width, height;
+}
+
+[data-ut-variant="pill"] [data-ut-tab] {
+  position: relative;
+  z-index: 1;
+  border-radius: 9999px;
+}
+
+/* ── Variant: bordered ── */
+[data-ut-variant="bordered"] {
+  --ut-indicator-radius: 6px 6px 0 0;
+}
+
+[data-ut-variant="bordered"] [data-ut-list] {
+  border-block-end: 1px solid #e5e7eb;
+}
+
+[data-ut-variant="bordered"] [data-ut-list]::after {
+  inset-block-end: 0;
+  inset-block-start: auto;
+  inset-inline-start: var(--ut-indicator-left, 0);
+  inset-inline-end: auto;
+  width: var(--ut-indicator-width, 0);
+  height: var(--ut-indicator-height);
+  background: var(--ut-indicator-color);
+  border-radius: var(--ut-indicator-radius);
+  transition-property: inset-inline-start, width;
+}
+
+[data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
+  border: 1px solid #e5e7eb;
+  border-block-end-color: transparent;
+  border-start-start-radius: 6px;
+  border-start-end-radius: 6px;
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+  margin-block-end: -1px;
+  background: var(--ut-panel-bg, #fff);
+}
+
+/* ── Orientation: vertical ── (must come AFTER variant rules to win the cascade) */
+[data-ut-orientation="vertical"] {
+  display: flex;
+  align-items: stretch;
+}
+
+[data-ut-orientation="vertical"][data-ut-side="right"] {
+  flex-direction: row-reverse;
+}
+
+[data-ut-orientation="vertical"] [data-ut-list] {
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+[data-ut-orientation="vertical"] [data-ut-panel] {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Vertical indicator — side="left": indicator on inline-end edge of list */
+[data-ut-orientation="vertical"][data-ut-side="left"] [data-ut-list]::after {
+  inset-block-start: var(--ut-indicator-top, 0);
+  inset-block-end: auto;
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  width: var(--ut-indicator-height);
+  height: var(--ut-indicator-height-val, 0);
+  transition-property: inset-block-start, height;
+}
+
+/* Vertical indicator — side="right": indicator on inline-start edge of list */
+[data-ut-orientation="vertical"][data-ut-side="right"] [data-ut-list]::after {
+  inset-block-start: var(--ut-indicator-top, 0);
+  inset-block-end: auto;
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  width: var(--ut-indicator-height);
+  height: var(--ut-indicator-height-val, 0);
+  transition-property: inset-block-start, height;
+}
+
+/* Vertical underline/bordered — side border instead of bottom border */
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="underline"] [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-list] {
+  border-block-end: none;
+  border-inline-end: 1px solid #e5e7eb;
+}
+
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="underline"] [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] [data-ut-list] {
+  border-block-end: none;
+  border-inline-start: 1px solid #e5e7eb;
+}
+
+/* Vertical bordered — active tab bleeds into panel */
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
+  border: 1px solid #e5e7eb;
+  border-inline-end-color: transparent;
+  border-block-end-color: #e5e7eb;
+  border-start-start-radius: 6px;
+  border-end-start-radius: 6px;
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  margin-inline-end: -1px;
+  margin-block-end: 0;
+  background: var(--ut-panel-bg, #fff);
+}
+
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
+  border: 1px solid #e5e7eb;
+  border-inline-start-color: transparent;
+  border-block-end-color: #e5e7eb;
+  border-start-end-radius: 6px;
+  border-end-end-radius: 6px;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  margin-inline-start: -1px;
+  margin-block-end: 0;
+  background: var(--ut-panel-bg, #fff);
+}

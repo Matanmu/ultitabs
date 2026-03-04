@@ -14,7 +14,12 @@
     },
     "./css": "./css/ultitabs.css"
   },
-  "files": ["dist", "css", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "css",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

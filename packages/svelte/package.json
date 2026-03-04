@@ -13,7 +13,11 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "echo 'TODO: not yet implemented'",
     "clean": "rm -rf dist"
@@ -25,7 +29,14 @@
     "svelte": ">=4"
   },
   "license": "MIT",
-  "keywords": ["tabs", "svelte", "ui", "aria", "accessible", "animated"],
+  "keywords": [
+    "tabs",
+    "svelte",
+    "ui",
+    "aria",
+    "accessible",
+    "animated"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Matanmu/ultitabs.git",

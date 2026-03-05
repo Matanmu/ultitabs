@@ -1,6 +1,6 @@
 {
   "name": "ultitabs",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Zero-dependency tab library with GPU-composited animations, full WAI-ARIA, RTL support, and AI-first design",
   "type": "module",
   "main": "./dist/index.cjs",

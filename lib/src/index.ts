@@ -1,5 +1,5 @@
 export { createTabs } from "./tabs";
-export type { TabPath, TabsConfig, TabsInstance, Orientation, Variant, Justify, Side } from "./types";
+export type { TabPath, TabsConfig, TabsInstance, Orientation, Variant, Justify, Side, Persist } from "./types";
 
 import { createTabs } from "./tabs";
 

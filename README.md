@@ -67,6 +67,49 @@ tabs.destroy()           // clean up
 
 ---
 
+## URL Sync
+
+Keep the active tab in sync with the URL hash — browser back/forward navigation works automatically:
+
+```js
+createTabs({ el: '#my-tabs', syncUrl: true })
+```
+
+Switching tabs updates the URL to `#ut-my-tabs-features`. Visiting the URL directly opens that tab.
+
+---
+
+## Persist Active Tab
+
+Remember the active tab across page reloads:
+
+```js
+// sessionStorage — cleared when browser closes
+createTabs({ el: '#my-tabs', persist: 'session' })
+
+// localStorage — persists indefinitely
+createTabs({ el: '#my-tabs', persist: 'local' })
+```
+
+---
+
+## Disabled Tabs
+
+Disable individual tabs via HTML attribute — they can't be clicked and are skipped by keyboard navigation:
+
+```html
+<div data-ut-section>
+  <div data-ut-list>
+    <button data-ut-tab="overview">Overview</button>
+    <button data-ut-tab="features" data-ut-disabled>Features</button>
+    <button data-ut-tab="pricing">Pricing</button>
+  </div>
+  ...
+</div>
+```
+
+---
+
 ## Auto-Init
 
 Add `data-ut-auto` to any section — no JS needed at all:
@@ -183,6 +226,9 @@ Override any visual with a CSS custom property — no JS required:
 - **Full RTL support** — automatic, zero-config
 - **Vertical orientation** — sidebar tabs with left/right placement
 - **Programmatic control** — `setPath()` + `onChange` callback
+- **URL sync** — `syncUrl: true` keeps the active tab in the URL hash
+- **Persist** — `persist: 'session' | 'local'` remembers active tab across reloads
+- **Disabled tabs** — `data-ut-disabled` attribute to disable individual tabs
 - **15+ CSS custom properties** — theme every pixel without touching JS
 
 ---

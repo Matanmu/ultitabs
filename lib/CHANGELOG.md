@@ -1,5 +1,13 @@
 # @ultitabs/core
 
+## 1.2.0
+
+### Minor Changes
+
+- `syncUrl: true` — syncs active tab to the URL hash; browser back/forward navigation works automatically
+- `persist: 'session' | 'local'` — remembers the active tab across page reloads using sessionStorage or localStorage
+- `data-ut-disabled` — disable individual tabs via HTML attribute; disabled tabs are skipped by keyboard navigation and cannot be clicked
+
 ## 1.1.0
 
 ### Minor Changes

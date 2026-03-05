@@ -11,6 +11,8 @@ export function createTabs(config: TabsConfig): TabsInstance {
     variant = "underline",
     justify = "start",
     side = "left",
+    syncUrl = false,
+    persist,
     onChange,
   } = config;
 
@@ -25,37 +27,52 @@ export function createTabs(config: TabsConfig): TabsInstance {
   list.setAttribute("aria-orientation", orientation);
   list.setAttribute("data-ut-justify", justify);
 
-  // Setup ARIA
+  // Setup ARIA — also marks disabled tabs
   setupAria(section);
+  markDisabledTabs(tabs);
 
   // State
   let currentPath: TabPath | null = null;
   const listeners: Set<ChangeHandler> = new Set();
   if (onChange) listeners.add(onChange);
 
-  // Determine initial path — config > data-ut-default attribute > first tab
-  const defaultPath = config.defaultPath
-    ?? root.getAttribute("data-ut-default")
-    ?? undefined;
-  const initialPath = defaultPath ?? getTabPath(tabs[0]);
+  // Persist storage key — scoped to element id or a generated key
+  const storageKey = `ut-persist-${root.id || root.getAttribute("data-ut-section") || Array.from(document.querySelectorAll("[data-ut-section]")).indexOf(root)}`;
+  const storage = persist === "local" ? localStorage : persist === "session" ? sessionStorage : null;
+
+  // Determine initial path — priority: config > URL hash > persisted > data-ut-default > first tab
+  const defaultPath = config.defaultPath ?? root.getAttribute("data-ut-default") ?? undefined;
+  const urlPath = syncUrl ? getHashPath(root) : null;
+  const persistedPath = storage ? storage.getItem(storageKey) : null;
+  const initialPath = defaultPath ?? urlPath ?? persistedPath ?? getTabPath(enabledTabs(tabs)[0] ?? tabs[0]);
 
   // Click handlers
   function handleClick(e: MouseEvent) {
     const tab = (e.target as HTMLElement).closest<HTMLElement>("[data-ut-tab]");
     if (!tab || !tabs.includes(tab)) return;
+    if (tab.hasAttribute("data-ut-disabled")) return;
     setPath(getTabPath(tab));
   }
   list.addEventListener("click", handleClick);
 
-  // Keyboard
+  // Keyboard — skip disabled tabs
   const cleanupKeyboard = setupKeyboard(list, tabs, orientation, (index) => {
-    setPath(getTabPath(tabs[index]));
+    const tab = tabs[index];
+    if (tab.hasAttribute("data-ut-disabled")) return;
+    setPath(getTabPath(tab));
   });
 
   // ResizeObserver for indicator
   const cleanupResize = observeResize(list, tabs, () =>
     tabs.findIndex((t) => getTabPath(t) === currentPath)
   );
+
+  // URL hash sync — listen for popstate (back/forward)
+  function handlePopState() {
+    const path = getHashPath(root);
+    if (path && path !== currentPath) setPath(path);
+  }
+  if (syncUrl) window.addEventListener("popstate", handlePopState);
 
   // Cancel any pending initial-mount RAF on destroy
   let cancelInitialRaf: (() => void) | null = null;
@@ -82,6 +99,16 @@ export function createTabs(config: TabsConfig): TabsInstance {
       updateIndicator(list, tabs[index]);
     }
 
+    // Persist
+    if (storage) storage.setItem(storageKey, path);
+
+    // URL sync
+    if (syncUrl) {
+      const url = new URL(window.location.href);
+      url.hash = `ut-${getTabId(root)}-${path}`;
+      history.pushState(null, "", url.toString());
+    }
+
     listeners.forEach((fn) => fn(path, prevPath));
   }
 
@@ -90,6 +117,7 @@ export function createTabs(config: TabsConfig): TabsInstance {
     cleanupKeyboard();
     cleanupResize();
     cancelInitialRaf?.();
+    if (syncUrl) window.removeEventListener("popstate", handlePopState);
     listeners.clear();
   }
 
@@ -119,4 +147,27 @@ function discoverDOM(root: HTMLElement): TabSection {
 
 function getTabPath(tab: HTMLElement): TabPath {
   return tab.getAttribute("data-ut-tab") || tab.textContent?.trim() || "";
+}
+
+function enabledTabs(tabs: HTMLElement[]): HTMLElement[] {
+  return tabs.filter((t) => !t.hasAttribute("data-ut-disabled"));
+}
+
+function markDisabledTabs(tabs: HTMLElement[]): void {
+  tabs.forEach((tab) => {
+    if (tab.hasAttribute("data-ut-disabled")) {
+      tab.setAttribute("aria-disabled", "true");
+      tab.setAttribute("tabindex", "-1");
+    }
+  });
+}
+
+function getTabId(root: HTMLElement): string {
+  return root.id || root.getAttribute("data-ut-section") || "tab";
+}
+
+function getHashPath(root: HTMLElement): TabPath | null {
+  const prefix = `ut-${getTabId(root)}-`;
+  const hash = window.location.hash.slice(1);
+  return hash.startsWith(prefix) ? hash.slice(prefix.length) : null;
 }

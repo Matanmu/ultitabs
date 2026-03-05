@@ -8,6 +8,8 @@ export type Justify = "start" | "center" | "end" | "between" | "around" | "evenl
 
 export type Side = "left" | "right";
 
+export type Persist = "session" | "local";
+
 export interface TabsConfig {
   el: HTMLElement | string;
   defaultPath?: TabPath;
@@ -15,6 +17,8 @@ export interface TabsConfig {
   variant?: Variant;
   justify?: Justify;
   side?: Side;
+  syncUrl?: boolean;
+  persist?: Persist;
   onChange?: (path: TabPath, prevPath: TabPath | null) => void;
 }
 

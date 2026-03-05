@@ -67,6 +67,65 @@ tabs.destroy()           // clean up
 
 ---
 
+## Usage with React
+
+No wrapper needed — works directly inside any React component:
+
+```jsx
+import { useEffect, useRef } from 'react'
+import { createTabs } from 'ultitabs'
+import 'ultitabs/css'
+
+export default function Tabs() {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const tabs = createTabs({ el: ref.current })
+    return () => tabs.destroy()
+  }, [])
+
+  return (
+    <div data-ut-section ref={ref}>
+      <div data-ut-list>
+        <button data-ut-tab="overview">Overview</button>
+        <button data-ut-tab="features">Features</button>
+      </div>
+      <div data-ut-panel="overview">Overview content</div>
+      <div data-ut-panel="features">Features content</div>
+    </div>
+  )
+}
+```
+
+## Usage with Vue
+
+```vue
+<script setup>
+import { onMounted, onUnmounted, ref } from 'vue'
+import { createTabs } from 'ultitabs'
+import 'ultitabs/css'
+
+const el = ref(null)
+let tabs
+
+onMounted(() => { tabs = createTabs({ el: el.value }) })
+onUnmounted(() => tabs?.destroy())
+</script>
+
+<template>
+  <div data-ut-section ref="el">
+    <div data-ut-list>
+      <button data-ut-tab="overview">Overview</button>
+      <button data-ut-tab="features">Features</button>
+    </div>
+    <div data-ut-panel="overview">Overview content</div>
+    <div data-ut-panel="features">Features content</div>
+  </div>
+</template>
+```
+
+---
+
 ## CSS Theming
 
 Override any visual with a CSS custom property — no JS required:

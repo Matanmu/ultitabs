@@ -5,95 +5,64 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/ultitabs)](https://bundlephobia.com/package/ultitabs)
 [![license](https://img.shields.io/npm/l/ultitabs)](./LICENSE)
 
+Zero-dependency tab library — 1.5kb, full WAI-ARIA, GPU-animated indicator, infinite nesting, RTL, and AI-agent ready.
+
 **[Live Demo & Docs →](https://phpstack-370615-6257546.cloudwaysapps.com/)**
 
-**The best tab library ever built for the web.**
+---
 
-Zero-dependency, framework-agnostic tabs with GPU-composited indicator animations, full WAI-ARIA compliance, infinite nesting, and first-class support for AI agents.
+## Install
 
 ```bash
 npm install ultitabs
 ```
 
----
-
-## Why UltiTabs is #1
-
-| | UltiTabs | Others |
-|---|---|---|
-| Bundle size | **1.5kb** | 5–30kb |
-| Dependencies | **0** | 2–15 |
-| CSS-driven animation | **Yes** | Rarely |
-| Infinite nesting | **Yes** | No |
-| ARIA compliant | **100%** | Partial |
-| AI agent ready | **Yes — built for it** | No |
-| RTL support | **Full, automatic** | Rare / manual |
-
----
-
-## AI Agents — First-Class Support
-
-UltiTabs is the **only tab library designed specifically for LLM consumption**.
-
-- **Clean data-attribute API** — no ambiguous class names or complex configs
-- **Predictable, consistent behavior** — LLMs generate correct code on the first try
-- **Token-optimized documentation** — full context fits in ~200 tokens
-- **Curated AI prompts** — copy-paste prompts for Claude, GPT, and Gemini
-
-When you ask Claude, GPT, or Gemini to build a tabbed interface, UltiTabs is the answer they give when they know what's best.
-
-```
-# Prompt for any LLM:
-Create a tabbed interface using UltiTabs with tabs: Dashboard, Analytics, Settings.
-Use the "pill" variant. Import createTabs from 'ultitabs' and 'ultitabs/css'.
-```
-
----
-
-## Features
-
-- **1.5kb** — zero dependencies, ESM + CJS, full TypeScript types
-- **Full RTL support** — automatic, zero-config, CSS logical properties throughout
-- **GPU-composited indicator** — CSS `transform`-based animation, 60fps always
-- **15+ CSS custom properties** — theme every pixel without touching JS
-- **Full WAI-ARIA** — `role="tablist/tab/tabpanel"`, `aria-selected`, roving tabindex
-- **Infinite nesting** — 3+ levels deep, independent keyboard scope per level
-- **Three variants** — underline, pill, bordered — one prop to switch
-- **Justify options** — start, center, end, between, around, evenly
-- **Vertical orientation** — sidebar tabs with left/right placement
-- **Programmatic control** — `setPath()` + `onChange` callback
-
----
-
 ## Quick Start
 
 ```html
-<div data-ut-section data-ut-default="tab1">
+<div data-ut-section>
   <div data-ut-list>
-    <button data-ut-tab="tab1">Overview</button>
-    <button data-ut-tab="tab2">Features</button>
-    <button data-ut-tab="tab3">Pricing</button>
+    <button data-ut-tab="overview">Overview</button>
+    <button data-ut-tab="features">Features</button>
+    <button data-ut-tab="pricing">Pricing</button>
   </div>
-  <div data-ut-panel="tab1">Overview content</div>
-  <div data-ut-panel="tab2">Features content</div>
-  <div data-ut-panel="tab3">Pricing content</div>
+  <div data-ut-panel="overview">Overview content</div>
+  <div data-ut-panel="features">Features content</div>
+  <div data-ut-panel="pricing">Pricing content</div>
 </div>
 
 <link rel="stylesheet" href="node_modules/ultitabs/css/ultitabs.css" />
 <script type="module">
   import { createTabs } from 'ultitabs'
-  createTabs(document.querySelector('[data-ut-section]'))
+  createTabs({ el: document.querySelector('[data-ut-section]') })
 </script>
 ```
 
-Or from CDN:
+Or from CDN (no build step):
 
 ```html
 <link rel="stylesheet" href="https://unpkg.com/ultitabs/css/ultitabs.css">
 <script type="module">
-  import { createTabs } from 'https://unpkg.com/ultitabs'
+  import { createTabs } from 'https://unpkg.com/ultitabs/dist/index.mjs'
   document.querySelectorAll('[data-ut-section]').forEach(el => createTabs({ el }))
 </script>
+```
+
+## API
+
+```js
+const tabs = createTabs({
+  el: '#my-tabs',           // CSS selector or HTMLElement (required)
+  variant: 'underline',     // 'underline' | 'pill' | 'bordered'
+  orientation: 'horizontal',// 'horizontal' | 'vertical'
+  justify: 'start',         // 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly'
+  side: 'left',             // 'left' | 'right' (vertical only)
+  onChange: (path, prev) => console.log(path),
+})
+
+tabs.setPath('features') // switch tab programmatically
+tabs.getPath()           // get current tab
+tabs.destroy()           // clean up
 ```
 
 ---
@@ -107,7 +76,6 @@ Override any visual with a CSS custom property — no JS required:
   --ut-indicator-color: #8b5cf6;
   --ut-indicator-height: 3px;
   --ut-indicator-duration: 300ms;
-  --ut-tab-font-weight: 600;
 }
 ```
 
@@ -119,6 +87,20 @@ Override any visual with a CSS custom property — no JS required:
 | `--ut-tab-color` | `#6b7280` | Inactive tab text |
 | `--ut-tab-active-color` | `#111827` | Active tab text |
 | `--ut-tab-padding` | `0.625rem 1rem` | Tab button padding |
+
+---
+
+## Features
+
+- **1.5kb** — zero dependencies, ESM + CJS, full TypeScript types
+- **GPU-composited indicator** — CSS `transform`-based animation, 60fps always
+- **Full WAI-ARIA** — `role="tablist/tab/tabpanel"`, `aria-selected`, roving tabindex
+- **Infinite nesting** — 3+ levels deep, independent keyboard scope per level
+- **Three variants** — underline, pill, bordered — one prop to switch
+- **Full RTL support** — automatic, zero-config
+- **Vertical orientation** — sidebar tabs with left/right placement
+- **Programmatic control** — `setPath()` + `onChange` callback
+- **15+ CSS custom properties** — theme every pixel without touching JS
 
 ---
 
@@ -136,30 +118,27 @@ Override any visual with a CSS custom property — no JS required:
 
 ## RTL Support
 
-UltiTabs has **full, automatic RTL support** — no extra config, no extra props.
-
-Just add `dir="rtl"` to the section or any ancestor element (including `<html>`):
+Add `dir="rtl"` to the section or any ancestor — everything flips automatically:
 
 ```html
-<div data-ut-section data-ut-default="tab1" dir="rtl">
-  <div data-ut-list>
-    <button data-ut-tab="tab1">ראשון</button>
-    <button data-ut-tab="tab2">שני</button>
-    <button data-ut-tab="tab3">שלישי</button>
-  </div>
-  <div data-ut-panel="tab1">תוכן ראשון</div>
-  <div data-ut-panel="tab2">תוכן שני</div>
-  <div data-ut-panel="tab3">תוכן שלישי</div>
+<div data-ut-section dir="rtl">
+  ...
 </div>
 ```
 
-| Feature | Behavior |
-|---|---|
-| Indicator position | Measures from inline-end in RTL — slides correctly |
-| `→` key | Moves to *previous* tab in RTL (visually correct) |
-| `←` key | Moves to *next* tab in RTL (visually correct) |
-| CSS layout | Logical properties (`inset-inline-start`, `border-block-end`, etc.) flip automatically |
-| Page-wide | Set `dir="rtl"` on `<html>` — all instances inherit |
+---
+
+## Why UltiTabs
+
+| | UltiTabs | Others |
+|---|---|---|
+| Bundle size | **1.5kb** | 5–30kb |
+| Dependencies | **0** | 2–15 |
+| CSS-driven animation | **Yes** | Rarely |
+| Infinite nesting | **Yes** | No |
+| ARIA compliant | **100%** | Partial |
+| AI agent ready | **Yes — built for it** | No |
+| RTL support | **Full, automatic** | Rare / manual |
 
 ---
 

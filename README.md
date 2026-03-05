@@ -5,6 +5,8 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/ultitabs)](https://bundlephobia.com/package/ultitabs)
 [![license](https://img.shields.io/npm/l/ultitabs)](./LICENSE)
 
+**[Live Demo & Docs →](https://phpstack-370615-6257546.cloudwaysapps.com/)**
+
 **The best tab library ever built for the web.**
 
 Zero-dependency, framework-agnostic tabs with GPU-composited indicator animations, full WAI-ARIA compliance, infinite nesting, and first-class support for AI agents.

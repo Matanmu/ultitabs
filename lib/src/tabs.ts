@@ -7,7 +7,6 @@ type ChangeHandler = (path: TabPath, prevPath: TabPath | null) => void;
 
 export function createTabs(config: TabsConfig): TabsInstance {
   const {
-    defaultPath,
     orientation = "horizontal",
     variant = "underline",
     justify = "start",
@@ -34,7 +33,10 @@ export function createTabs(config: TabsConfig): TabsInstance {
   const listeners: Set<ChangeHandler> = new Set();
   if (onChange) listeners.add(onChange);
 
-  // Determine initial path
+  // Determine initial path — config > data-ut-default attribute > first tab
+  const defaultPath = config.defaultPath
+    ?? root.getAttribute("data-ut-default")
+    ?? undefined;
   const initialPath = defaultPath ?? getTabPath(tabs[0]);
 
   // Click handlers

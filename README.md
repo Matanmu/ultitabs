@@ -67,6 +67,30 @@ tabs.destroy()           // clean up
 
 ---
 
+## Auto-Init
+
+Add `data-ut-auto` to any section — no JS needed at all:
+
+```html
+<link rel="stylesheet" href="https://unpkg.com/ultitabs/css/ultitabs.css">
+<script type="module" src="https://unpkg.com/ultitabs/dist/index.mjs"></script>
+
+<div data-ut-section data-ut-auto data-ut-default="features">
+  <div data-ut-list>
+    <button data-ut-tab="overview">Overview</button>
+    <button data-ut-tab="features">Features</button>
+    <button data-ut-tab="pricing">Pricing</button>
+  </div>
+  <div data-ut-panel="overview">Overview content</div>
+  <div data-ut-panel="features">Features content</div>
+  <div data-ut-panel="pricing">Pricing content</div>
+</div>
+```
+
+`data-ut-default` sets which tab is active on load. Without it, the first tab is active.
+
+---
+
 ## Usage with React
 
 No wrapper needed — works directly inside any React component:

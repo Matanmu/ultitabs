@@ -34,7 +34,7 @@ npm install ultitabs
 <link rel="stylesheet" href="node_modules/ultitabs/css/ultitabs.css" />
 <script type="module">
   import { createTabs } from 'ultitabs'
-  createTabs({ el: document.querySelector('[data-ut-section]') })
+  createTabs({ el: '[data-ut-section]' })
 </script>
 ```
 

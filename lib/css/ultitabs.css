@@ -215,6 +215,96 @@
   border-inline-start: 1px solid #e5e7eb;
 }
 
+/* ── Overflow scroll ── */
+
+[data-ut-scroller] {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+[data-ut-scroller] [data-ut-list] {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  min-width: 0;
+}
+
+[data-ut-scroller] [data-ut-list]::-webkit-scrollbar {
+  display: none;
+}
+
+[data-ut-scroll-btn] {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--ut-tab-color);
+  font-size: 0.625rem;
+  padding: 0;
+  transition: color 150ms ease, opacity 150ms ease;
+}
+
+[data-ut-scroll-btn]:hover {
+  color: var(--ut-tab-active-color);
+}
+
+[data-ut-scroll-btn][data-ut-scroll-hidden] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Vertical overflow */
+[data-ut-orientation="vertical"] [data-ut-scroller] {
+  flex-direction: column;
+}
+
+[data-ut-orientation="vertical"] [data-ut-scroller] [data-ut-list] {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* ── Panel transitions ── */
+
+[data-ut-section] {
+  --ut-transition-duration: 200ms;
+}
+
+[data-ut-panel][data-ut-panel-entering="fade"] {
+  animation: ut-fade-in var(--ut-transition-duration) ease forwards;
+}
+
+[data-ut-panel][data-ut-panel-leaving] {
+  position: absolute;
+  pointer-events: none;
+}
+
+@keyframes ut-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+[data-ut-panel][data-ut-panel-entering="slide"] {
+  animation: ut-slide-in var(--ut-transition-duration) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ut-slide-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Panel container needs position:relative for the leaving panel overlay */
+[data-ut-transition] [data-ut-panel] {
+  position: relative;
+}
+
 /* Vertical bordered — active tab bleeds into panel */
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
   border: 1px solid #e5e7eb;

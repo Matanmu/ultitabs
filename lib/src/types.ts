@@ -10,6 +10,8 @@ export type Side = "left" | "right";
 
 export type Persist = "session" | "local";
 
+export type Transition = "fade" | "slide";
+
 export interface TabsConfig {
   el: HTMLElement | string;
   defaultPath?: TabPath;
@@ -19,7 +21,11 @@ export interface TabsConfig {
   side?: Side;
   syncUrl?: boolean;
   persist?: Persist;
-  onChange?: (path: TabPath, prevPath: TabPath | null) => void;
+  overflow?: boolean;
+  transition?: Transition;
+  equalHeight?: boolean;
+  equalPanelHeight?: boolean;
+  onChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
 }
 
 export interface TabsInstance {

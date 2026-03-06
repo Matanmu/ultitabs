@@ -1,5 +1,21 @@
 # @ultitabs/core
 
+## 1.4.0
+
+### Minor Changes
+
+- `equalHeight: true` — sets `min-height` on the root section to match the tallest panel; no layout shift when switching tabs
+- `equalPanelHeight: true` — sets `min-height` on every individual panel to match the tallest; all panels share the same height box
+- Both options use `ResizeObserver` to re-measure when content changes, and clean up on `destroy()`
+
+## 1.3.0
+
+### Minor Changes
+
+- `overflow: true` — when tabs overflow their container, scroll arrows appear automatically; clicking them scrolls the tab list; arrows hide when at the start/end
+- `transition: 'fade' | 'slide'` — optional panel transition animation when switching tabs
+- `onChange` now supports returning `false` to cancel a tab switch — useful for unsaved-changes guards or confirmation dialogs
+
 ## 1.2.0
 
 ### Minor Changes

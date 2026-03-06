@@ -13,6 +13,10 @@ export function createTabs(config: TabsConfig): TabsInstance {
     side = "left",
     syncUrl = false,
     persist,
+    overflow = false,
+    transition,
+    equalHeight = false,
+    equalPanelHeight = false,
     onChange,
   } = config;
 
@@ -20,12 +24,23 @@ export function createTabs(config: TabsConfig): TabsInstance {
   const section = discoverDOM(root);
   const { list, tabs, panels } = section;
 
-  // Set variant, orientation, justify, side
+  // Set variant, orientation, justify, side, transition
   root.setAttribute("data-ut-variant", variant);
   root.setAttribute("data-ut-orientation", orientation);
   root.setAttribute("data-ut-side", side);
   list.setAttribute("aria-orientation", orientation);
   list.setAttribute("data-ut-justify", justify);
+  if (transition) root.setAttribute("data-ut-transition", transition);
+
+  // Overflow scroll — wrap list in a scroller, add arrow buttons
+  let cleanupOverflow: (() => void) | null = null;
+  if (overflow) cleanupOverflow = setupOverflow(list, orientation);
+
+  // Equal height — measure after first paint
+  let cleanupEqualHeight: (() => void) | null = null;
+  if (equalHeight || equalPanelHeight) {
+    cleanupEqualHeight = setupEqualHeight(root, panels, equalHeight, equalPanelHeight);
+  }
 
   // Setup ARIA — also marks disabled tabs
   setupAria(section);
@@ -34,7 +49,6 @@ export function createTabs(config: TabsConfig): TabsInstance {
   // State
   let currentPath: TabPath | null = null;
   const listeners: Set<ChangeHandler> = new Set();
-  if (onChange) listeners.add(onChange);
 
   // Persist storage key — scoped to element id or a generated key
   const storageKey = `ut-persist-${root.id || root.getAttribute("data-ut-section") || Array.from(document.querySelectorAll("[data-ut-section]")).indexOf(root)}`;
@@ -89,8 +103,19 @@ export function createTabs(config: TabsConfig): TabsInstance {
     const index = tabs.findIndex((t) => getTabPath(t) === path);
     if (index === -1) return;
 
+    // onChange can return false to cancel the switch
+    if (onChange && onChange(path, prevPath) === false) return;
+
     currentPath = path;
+
+    const prevIndex = panels.findIndex((p) => !p.hidden);
+
     updateAriaSelection(tabs, panels, index);
+
+    // Transition: animate after updateAriaSelection has activated the new panel
+    if (transition && prevIndex !== -1 && prevIndex !== index) {
+      applyTransition(panels, index, prevIndex, transition);
+    }
 
     if (defer) {
       cancelInitialRaf?.();
@@ -109,6 +134,7 @@ export function createTabs(config: TabsConfig): TabsInstance {
       history.pushState(null, "", url.toString());
     }
 
+    // Notify `.on("change", ...)` listeners (onChange config was already called above)
     listeners.forEach((fn) => fn(path, prevPath));
   }
 
@@ -116,6 +142,8 @@ export function createTabs(config: TabsConfig): TabsInstance {
     list.removeEventListener("click", handleClick);
     cleanupKeyboard();
     cleanupResize();
+    cleanupOverflow?.();
+    cleanupEqualHeight?.();
     cancelInitialRaf?.();
     if (syncUrl) window.removeEventListener("popstate", handlePopState);
     listeners.clear();
@@ -170,4 +198,155 @@ function getHashPath(root: HTMLElement): TabPath | null {
   const prefix = `ut-${getTabId(root)}-`;
   const hash = window.location.hash.slice(1);
   return hash.startsWith(prefix) ? hash.slice(prefix.length) : null;
+}
+
+// ── Equal height ─────────────────────────────────────────────────────────────
+
+function setupEqualHeight(
+  root: HTMLElement,
+  panels: HTMLElement[],
+  equalHeight: boolean,
+  equalPanelHeight: boolean
+): () => void {
+  function measure() {
+    // Temporarily show all panels to measure their natural height
+    const wasHidden = panels.map((p) => p.hidden);
+    panels.forEach((p) => {
+      p.hidden = false;
+      p.style.minHeight = "";
+    });
+    root.style.minHeight = "";
+
+    // Force reflow so scrollHeight reflects actual content
+    void root.offsetHeight;
+
+    const max = Math.max(...panels.map((p) => p.scrollHeight));
+
+    // Restore hidden state
+    panels.forEach((p, i) => {
+      p.hidden = wasHidden[i];
+    });
+
+    // equalHeight: set min-height on root to prevent the page from jumping
+    // Also set it on panels — without this the root min-height alone doesn't
+    // prevent the content area from shrinking when a shorter panel is shown
+    if (equalHeight) {
+      panels.forEach((p) => (p.style.minHeight = `${max}px`));
+      void root.offsetHeight; // reflow after panels are sized
+      root.style.minHeight = `${root.scrollHeight}px`;
+    }
+    if (equalPanelHeight) panels.forEach((p) => (p.style.minHeight = `${max}px`));
+  }
+
+  // Measure after first paint so content is rendered
+  const raf = requestAnimationFrame(measure);
+
+  // Re-measure when content size changes
+  const ro = new ResizeObserver(measure);
+  ro.observe(root);
+
+  return () => {
+    cancelAnimationFrame(raf);
+    ro.disconnect();
+    root.style.minHeight = "";
+    panels.forEach((p) => (p.style.minHeight = ""));
+  };
+}
+
+// ── Overflow scroll ──────────────────────────────────────────────────────────
+
+function setupOverflow(list: HTMLElement, orientation: string): () => void {
+  const isVertical = orientation === "vertical";
+  const scroller = document.createElement("div");
+  scroller.setAttribute("data-ut-scroller", "");
+  list.parentNode!.insertBefore(scroller, list);
+  scroller.appendChild(list);
+
+  const btnStart = document.createElement("button");
+  const btnEnd = document.createElement("button");
+  btnStart.setAttribute("data-ut-scroll-btn", "start");
+  btnEnd.setAttribute("data-ut-scroll-btn", "end");
+  btnStart.setAttribute("aria-hidden", "true");
+  btnEnd.setAttribute("aria-hidden", "true");
+  btnStart.setAttribute("tabindex", "-1");
+  btnEnd.setAttribute("tabindex", "-1");
+  btnStart.innerHTML = isVertical ? "&#9650;" : "&#9664;";
+  btnEnd.innerHTML = isVertical ? "&#9660;" : "&#9654;";
+  scroller.insertBefore(btnStart, list);
+  scroller.appendChild(btnEnd);
+
+  const scrollAmount = 120;
+
+  function onScrollStart() {
+    if (isVertical) list.scrollTop -= scrollAmount;
+    else list.scrollLeft -= scrollAmount;
+    updateButtons();
+  }
+  function onScrollEnd() {
+    if (isVertical) list.scrollTop += scrollAmount;
+    else list.scrollLeft += scrollAmount;
+    updateButtons();
+  }
+
+  function updateButtons() {
+    const atStart = isVertical ? list.scrollTop <= 0 : list.scrollLeft <= 0;
+    const atEnd = isVertical
+      ? list.scrollTop + list.clientHeight >= list.scrollHeight - 1
+      : list.scrollLeft + list.clientWidth >= list.scrollWidth - 1;
+    btnStart.toggleAttribute("data-ut-scroll-hidden", atStart);
+    btnEnd.toggleAttribute("data-ut-scroll-hidden", atEnd);
+  }
+
+  btnStart.addEventListener("click", onScrollStart);
+  btnEnd.addEventListener("click", onScrollEnd);
+  list.addEventListener("scroll", updateButtons, { passive: true });
+
+  const ro = new ResizeObserver(updateButtons);
+  ro.observe(list);
+  updateButtons();
+
+  return () => {
+    ro.disconnect();
+    list.removeEventListener("scroll", updateButtons);
+    btnStart.removeEventListener("click", onScrollStart);
+    btnEnd.removeEventListener("click", onScrollEnd);
+    if (scroller.parentNode) {
+      scroller.parentNode.insertBefore(list, scroller);
+      scroller.remove();
+    }
+  };
+}
+
+// ── Panel transitions ────────────────────────────────────────────────────────
+
+function applyTransition(
+  panels: HTMLElement[],
+  nextIndex: number,
+  prevIndex: number,
+  transition: string
+): void {
+  const outgoing = panels[prevIndex];
+  const incoming = panels[nextIndex];
+
+  // Show outgoing again temporarily so it can animate out
+  outgoing.hidden = false;
+  outgoing.setAttribute("data-ut-panel-leaving", "");
+  incoming.setAttribute("data-ut-panel-entering", transition);
+
+  // Determine animation duration from CSS variable or fallback
+  const style = getComputedStyle(incoming);
+  const durationStr = style.getPropertyValue("--ut-transition-duration").trim() || "200ms";
+  const duration = parseFloat(durationStr) * (durationStr.endsWith("s") && !durationStr.endsWith("ms") ? 1000 : 1);
+
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    outgoing.hidden = true;
+    outgoing.removeAttribute("data-ut-panel-leaving");
+    incoming.removeAttribute("data-ut-panel-entering");
+  };
+
+  incoming.addEventListener("animationend", finish, { once: true });
+  setTimeout(finish, duration + 50);
 }

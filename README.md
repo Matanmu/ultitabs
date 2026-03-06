@@ -57,7 +57,14 @@ const tabs = createTabs({
   orientation: 'horizontal',// 'horizontal' | 'vertical'
   justify: 'start',         // 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly'
   side: 'left',             // 'left' | 'right' (vertical only)
-  onChange: (path, prev) => console.log(path),
+  overflow: false,          // show scroll arrows when tabs overflow
+  transition: 'fade',       // 'fade' | 'slide' — panel switch animation
+  equalHeight: false,       // container min-height = tallest panel
+  equalPanelHeight: false,  // every panel min-height = tallest panel
+  onChange: (path, prev) => {
+    // return false to cancel the tab switch
+    console.log(path)
+  },
 })
 
 tabs.setPath('features') // switch tab programmatically
@@ -106,6 +113,74 @@ Disable individual tabs via HTML attribute — they can't be clicked and are ski
   </div>
   ...
 </div>
+```
+
+---
+
+## Overflow Scroll
+
+When you have many tabs, enable overflow mode to add scroll arrows automatically:
+
+```js
+createTabs({ el: '#my-tabs', overflow: true })
+```
+
+Arrow buttons appear at the edges when the tab list overflows its container. They disappear when you're at the start or end.
+
+---
+
+## Panel Transitions
+
+Add a fade or slide animation when switching between panels:
+
+```js
+createTabs({ el: '#my-tabs', transition: 'fade' })  // fade in/out
+createTabs({ el: '#my-tabs', transition: 'slide' })  // slide + fade
+```
+
+Control the duration with a CSS variable:
+
+```css
+[data-ut-section] {
+  --ut-transition-duration: 300ms;
+}
+```
+
+---
+
+## Equal Height
+
+Prevent layout shift when switching between panels of different heights.
+
+```js
+// Container gets min-height = tallest panel
+createTabs({ el: '#my-tabs', equalHeight: true })
+
+// Every panel gets min-height = tallest panel
+createTabs({ el: '#my-tabs', equalPanelHeight: true })
+
+// Both together
+createTabs({ el: '#my-tabs', equalHeight: true, equalPanelHeight: true })
+```
+
+Both options re-measure automatically when content changes (via `ResizeObserver`).
+
+---
+
+## Cancel Tab Switch
+
+Return `false` from `onChange` to prevent a tab from activating — useful for unsaved-changes guards:
+
+```js
+createTabs({
+  el: '#my-tabs',
+  onChange: (path, prevPath) => {
+    if (hasUnsavedChanges) {
+      return false // cancels the switch
+    }
+    // returning nothing (or true) allows the switch
+  }
+})
 ```
 
 ---
@@ -229,6 +304,10 @@ Override any visual with a CSS custom property — no JS required:
 - **URL sync** — `syncUrl: true` keeps the active tab in the URL hash
 - **Persist** — `persist: 'session' | 'local'` remembers active tab across reloads
 - **Disabled tabs** — `data-ut-disabled` attribute to disable individual tabs
+- **Overflow scroll** — `overflow: true` adds scroll arrows when tabs overflow
+- **Panel transitions** — `transition: 'fade' | 'slide'` animates panel switches
+- **Equal height** — `equalHeight` / `equalPanelHeight` eliminates layout shift between panels
+- **Cancellable onChange** — return `false` from `onChange` to block a tab switch
 - **15+ CSS custom properties** — theme every pixel without touching JS
 
 ---

@@ -1,9 +1,7 @@
-import type { TabPath, TabsConfig, TabsInstance, TabSection } from "./types";
+import type { TabPath, TabsConfig, TabsInstance, TabSection, TabChangeHandler, TabBeforeChangeHandler } from "./types";
 import { resolveElement } from "./utils";
 import { setupAria, updateAriaSelection, setupKeyboard } from "./aria";
 import { updateIndicator, updateIndicatorNextFrame, observeResize } from "./indicator";
-
-type ChangeHandler = (path: TabPath, prevPath: TabPath | null) => void;
 
 export function createTabs(config: TabsConfig): TabsInstance {
   const {
@@ -18,6 +16,8 @@ export function createTabs(config: TabsConfig): TabsInstance {
     equalHeight = false,
     equalPanelHeight = false,
     onChange,
+    beforeChange,
+    afterChange,
   } = config;
 
   const root = resolveElement(config.el);
@@ -48,7 +48,9 @@ export function createTabs(config: TabsConfig): TabsInstance {
 
   // State
   let currentPath: TabPath | null = null;
-  const listeners: Set<ChangeHandler> = new Set();
+  const listeners: Set<TabChangeHandler> = new Set();
+  const beforeListeners: Set<TabBeforeChangeHandler> = new Set();
+  const afterListeners: Set<TabChangeHandler> = new Set();
 
   // Persist storage key — scoped to element id or a generated key
   const storageKey = `ut-persist-${root.id || root.getAttribute("data-ut-section") || Array.from(document.querySelectorAll("[data-ut-section]")).indexOf(root)}`;
@@ -103,8 +105,13 @@ export function createTabs(config: TabsConfig): TabsInstance {
     const index = tabs.findIndex((t) => getTabPath(t) === path);
     if (index === -1) return;
 
-    // onChange can return false to cancel the switch
-    if (onChange && onChange(path, prevPath) === false) return;
+    // Skip hooks on the initial deferred render (no previous state to transition from)
+    if (!defer) {
+      // beforeChange (and legacy onChange) can return false to cancel the switch
+      if (beforeChange && beforeChange(path, prevPath) === false) return;
+      if (onChange && onChange(path, prevPath) === false) return;
+      for (const fn of beforeListeners) { if (fn(path, prevPath) === false) return; }
+    }
 
     currentPath = path;
 
@@ -134,8 +141,14 @@ export function createTabs(config: TabsConfig): TabsInstance {
       history.pushState(null, "", url.toString());
     }
 
-    // Notify `.on("change", ...)` listeners (onChange config was already called above)
-    listeners.forEach((fn) => fn(path, prevPath));
+    if (!defer) {
+      // Notify change listeners (fired after state is committed)
+      listeners.forEach((fn) => fn(path, prevPath));
+
+      // afterChange config callback + afterChange listeners
+      afterChange?.(path, prevPath);
+      afterListeners.forEach((fn) => fn(path, prevPath));
+    }
   }
 
   function destroy(): void {
@@ -147,18 +160,31 @@ export function createTabs(config: TabsConfig): TabsInstance {
     cancelInitialRaf?.();
     if (syncUrl) window.removeEventListener("popstate", handlePopState);
     listeners.clear();
+    beforeListeners.clear();
+    afterListeners.clear();
   }
 
-  function on(event: "change", handler: ChangeHandler): () => void {
-    if (event !== "change") return () => {};
-    listeners.add(handler);
-    return () => listeners.delete(handler);
+  function on(event: "beforeChange", handler: TabBeforeChangeHandler): () => void;
+  function on(event: "change" | "afterChange", handler: TabChangeHandler): () => void;
+  function on(event: string, handler: TabBeforeChangeHandler | TabChangeHandler): () => void {
+    if (event === "beforeChange") { beforeListeners.add(handler as TabBeforeChangeHandler); return () => beforeListeners.delete(handler as TabBeforeChangeHandler); }
+    if (event === "afterChange")  { afterListeners.add(handler as TabChangeHandler);  return () => afterListeners.delete(handler as TabChangeHandler); }
+    listeners.add(handler as TabChangeHandler);
+    return () => listeners.delete(handler as TabChangeHandler);
+  }
+
+  function off(event: "beforeChange", handler: TabBeforeChangeHandler): void;
+  function off(event: "change" | "afterChange", handler: TabChangeHandler): void;
+  function off(event: string, handler: TabBeforeChangeHandler | TabChangeHandler): void {
+    if (event === "beforeChange") { beforeListeners.delete(handler as TabBeforeChangeHandler); return; }
+    if (event === "afterChange")  { afterListeners.delete(handler as TabChangeHandler);  return; }
+    listeners.delete(handler as TabChangeHandler);
   }
 
   // Initialize — defer to next frame so the DOM is laid out before measuring
   setPath(initialPath, true);
 
-  return { getPath, setPath, destroy, on };
+  return { getPath, setPath, destroy, on, off };
 }
 
 function discoverDOM(root: HTMLElement): TabSection {
@@ -270,8 +296,8 @@ function setupOverflow(list: HTMLElement, orientation: string): () => void {
   btnEnd.setAttribute("aria-hidden", "true");
   btnStart.setAttribute("tabindex", "-1");
   btnEnd.setAttribute("tabindex", "-1");
-  btnStart.innerHTML = isVertical ? "&#9650;" : "&#9664;";
-  btnEnd.innerHTML = isVertical ? "&#9660;" : "&#9654;";
+  btnStart.textContent = isVertical ? "▲" : "◀";
+  btnEnd.textContent = isVertical ? "▼" : "▶";
   scroller.insertBefore(btnStart, list);
   scroller.appendChild(btnEnd);
 

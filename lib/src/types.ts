@@ -12,6 +12,9 @@ export type Persist = "session" | "local";
 
 export type Transition = "fade" | "slide";
 
+export type TabChangeHandler = (path: TabPath, prevPath: TabPath | null) => void;
+export type TabBeforeChangeHandler = (path: TabPath, prevPath: TabPath | null) => boolean | void;
+
 export interface TabsConfig {
   el: HTMLElement | string;
   defaultPath?: TabPath;
@@ -25,14 +28,24 @@ export interface TabsConfig {
   transition?: Transition;
   equalHeight?: boolean;
   equalPanelHeight?: boolean;
+  /** @deprecated Use `beforeChange` instead. Called before state change; return false to cancel. */
   onChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
+  /** Called before state change. Return false to cancel the switch. */
+  beforeChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
+  /** Called after state change and all listeners have been notified. */
+  afterChange?: (path: TabPath, prevPath: TabPath | null) => void;
 }
 
 export interface TabsInstance {
   getPath(): TabPath;
   setPath(path: TabPath): void;
   destroy(): void;
-  on(event: "change", handler: (path: TabPath, prevPath: TabPath | null) => void): () => void;
+  /** Subscribe to a hook. Returns an unsubscribe function. */
+  on(event: "beforeChange", handler: TabBeforeChangeHandler): () => void;
+  on(event: "change" | "afterChange", handler: TabChangeHandler): () => void;
+  /** Unsubscribe a previously registered handler. */
+  off(event: "beforeChange", handler: TabBeforeChangeHandler): void;
+  off(event: "change" | "afterChange", handler: TabChangeHandler): void;
 }
 
 export interface TabSection {

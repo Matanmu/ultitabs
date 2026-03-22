@@ -1,5 +1,17 @@
 # @ultitabs/core
 
+## 1.5.0
+
+### Minor Changes
+
+- **Tab change hooks** — new `beforeChange` and `afterChange` config callbacks alongside the richer `.on()` event system:
+  - `beforeChange(path, prevPath)` — called before state changes; return `false` to cancel the switch (like `onChange`, which is now deprecated in favour of `beforeChange`)
+  - `afterChange(path, prevPath)` — called after state is committed and all listeners have been notified; safe to read the new DOM state here
+  - `.on('beforeChange', handler)` — subscribe imperatively; handler can return `false` to cancel; returns an unsubscribe function
+  - `.on('afterChange', handler)` — subscribe imperatively; fires after all change listeners
+  - `.off(event, handler)` — explicitly unsubscribe a handler without needing the returned unsubscribe function
+- `onChange` config option is deprecated (still works, fires alongside `beforeChange`); prefer `beforeChange`
+
 ## 1.4.0
 
 ### Minor Changes

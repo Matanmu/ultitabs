@@ -61,14 +61,19 @@ const tabs = createTabs({
   transition: 'fade',       // 'fade' | 'slide' — panel switch animation
   equalHeight: false,       // container min-height = tallest panel
   equalPanelHeight: false,  // every panel min-height = tallest panel
-  onChange: (path, prev) => {
+  beforeChange: (path, prev) => {
     // return false to cancel the tab switch
-    console.log(path)
+  },
+  afterChange: (path, prev) => {
+    // fires after state is committed
   },
 })
 
 tabs.setPath('features') // switch tab programmatically
 tabs.getPath()           // get current tab
+tabs.on('beforeChange', fn) // subscribe (returns unsubscribe fn)
+tabs.on('afterChange', fn)
+tabs.off('afterChange', fn) // explicit unsubscribe
 tabs.destroy()           // clean up
 ```
 
@@ -167,21 +172,39 @@ Both options re-measure automatically when content changes (via `ResizeObserver`
 
 ---
 
-## Cancel Tab Switch
+## Lifecycle Hooks
 
-Return `false` from `onChange` to prevent a tab from activating — useful for unsaved-changes guards:
+Use `beforeChange` and `afterChange` for full control over tab transitions:
 
 ```js
-createTabs({
+const tabs = createTabs({
   el: '#my-tabs',
-  onChange: (path, prevPath) => {
-    if (hasUnsavedChanges) {
-      return false // cancels the switch
-    }
-    // returning nothing (or true) allows the switch
-  }
+
+  // Fires BEFORE the switch — return false to cancel
+  beforeChange: (path, prevPath) => {
+    if (hasUnsavedChanges()) return false
+  },
+
+  // Fires AFTER state is committed — safe to read new DOM
+  afterChange: (path, prevPath) => {
+    analytics.track('tab_change', { from: prevPath, to: path })
+  },
 })
+
+// Imperative subscriptions
+const unsub = tabs.on('beforeChange', (path, prev) => {
+  // return false here also cancels the switch
+})
+tabs.on('afterChange', (path) => {
+  document.title = `My App — ${path}`
+})
+
+// Unsubscribe
+unsub()                       // via returned function
+tabs.off('afterChange', myFn) // or via .off()
 ```
+
+> `onChange` is deprecated — use `beforeChange` instead. It still works.
 
 ---
 

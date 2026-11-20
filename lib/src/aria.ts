@@ -2,12 +2,12 @@ import type { Orientation, TabSection } from "./types";
 import { generateId } from "./utils";
 
 export function setupAria(section: TabSection): void {
-  const { list, tabs, panels } = section;
+  const { list, tabs, tabPanelMap } = section;
 
   list.setAttribute("role", "tablist");
 
   tabs.forEach((tab, i) => {
-    const panel = panels[i];
+    const panel = tabPanelMap.get(i);
     if (!panel) return;
 
     const tabId = tab.id || generateId("ut-tab");
@@ -24,18 +24,29 @@ export function setupAria(section: TabSection): void {
   });
 }
 
-export function updateAriaSelection(tabs: HTMLElement[], panels: HTMLElement[], activeIndex: number): void {
+export function updateAriaSelection(
+  tabs: HTMLElement[],
+  tabPanelMap: Map<number, HTMLElement>,
+  panels: HTMLElement[],
+  activeIndex: number,
+): void {
   tabs.forEach((tab, i) => {
     const isActive = i === activeIndex;
+    const isDisabled = tab.hasAttribute("data-ut-disabled");
     tab.setAttribute("aria-selected", String(isActive));
+    if (isDisabled) tab.setAttribute("aria-disabled", "true");
+    else tab.removeAttribute("aria-disabled");
+    // The active tab keeps tabindex 0 even if it is disabled, matching 1.5.
+    // Every other tab, including disabled ones, stays out of the tab sequence.
     tab.setAttribute("tabindex", isActive ? "0" : "-1");
     if (isActive) tab.setAttribute("data-ut-active", "");
     else tab.removeAttribute("data-ut-active");
   });
 
-  panels.forEach((panel, i) => {
-    const isActive = i === activeIndex;
-    panel.hidden = !isActive;
+  const activePanel = tabPanelMap.get(activeIndex) ?? null;
+  const allPanels = new Set<HTMLElement>([...panels, ...tabPanelMap.values()]);
+  allPanels.forEach((panel) => {
+    panel.hidden = panel !== activePanel;
     panel.setAttribute("tabindex", "0");
   });
 }
@@ -44,37 +55,63 @@ export function setupKeyboard(
   list: HTMLElement,
   tabs: HTMLElement[],
   orientation: Orientation,
-  onSelect: (index: number) => void
+  onSelect: (index: number) => void,
 ): () => void {
   const isHorizontal = orientation === "horizontal";
 
-  function handleKeydown(e: KeyboardEvent) {
-    const currentIndex = tabs.findIndex((t) => t === document.activeElement);
+  function isEnabled(index: number): boolean {
+    return !tabs[index].hasAttribute("data-ut-disabled");
+  }
+
+  function findEnabled(start: number, direction: 1 | -1): number | null {
+    const len = tabs.length;
+    for (let step = 1; step <= len; step += 1) {
+      const index = (start + direction * step + len) % len;
+      if (isEnabled(index)) return index;
+    }
+    return null;
+  }
+
+  function findEdge(fromEnd: boolean): number | null {
+    if (fromEnd) {
+      for (let i = tabs.length - 1; i >= 0; i -= 1) {
+        if (isEnabled(i)) return i;
+      }
+      return null;
+    }
+    for (let i = 0; i < tabs.length; i += 1) {
+      if (isEnabled(i)) return i;
+    }
+    return null;
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
     if (currentIndex === -1) return;
 
-    // Detect RTL at event time so it reflects current DOM state
     const isRtl = isHorizontal && getComputedStyle(list).direction === "rtl";
-
     let nextIndex: number | null = null;
 
-    switch (e.key) {
+    switch (event.key) {
       case isHorizontal ? (isRtl ? "ArrowLeft" : "ArrowRight") : "ArrowDown":
-        nextIndex = (currentIndex + 1) % tabs.length;
+        nextIndex = findEnabled(currentIndex, 1);
         break;
       case isHorizontal ? (isRtl ? "ArrowRight" : "ArrowLeft") : "ArrowUp":
-        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        nextIndex = findEnabled(currentIndex, -1);
         break;
       case "Home":
-        nextIndex = 0;
+        nextIndex = findEdge(false);
         break;
       case "End":
-        nextIndex = tabs.length - 1;
+        nextIndex = findEdge(true);
         break;
       default:
         return;
     }
 
-    e.preventDefault();
+    if (nextIndex === null) return;
+
+    event.preventDefault();
     tabs[nextIndex].focus();
     onSelect(nextIndex);
   }

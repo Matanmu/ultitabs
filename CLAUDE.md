@@ -1,125 +1,64 @@
 # UltiTabs — CLAUDE.md
 
-## Projects
+This repository is the `ultitabs` library (npm package). The marketing site is a separate checkout and is not in this repo.
 
-| Path | Purpose |
-|---|---|
-| `/Users/matanmu/Proj/ultitabs/` | npm package / GitHub repo (the library) |
-| `/Users/matanmu/Proj/ultitabs-site/` | Marketing + docs website |
+## Layout
 
-They are the **same project**. Changes to the library should be reflected in the site (docs, examples, release notes).
-
----
-
-## Library (`/ultitabs/lib/`)
-
-### Build
-```bash
-pnpm --filter ultitabs build   # build once
-pnpm --filter ultitabs dev     # watch mode
+```
+lib/src/tabs.ts          createTabs()
+lib/src/types.ts         public types
+lib/src/index.ts         exports + auto-init on import
+lib/src/aria.ts          roles, selection, keyboard
+lib/src/indicator.ts     indicator position (CSS variables, not a transform animation)
+lib/src/utils.ts         ids, element lookup, RTL scroll math
+lib/css/ultitabs.css     shipped CSS (source). ultitabs.min.css is build output
+lib/package.json         the publishable package (version 1.5.0 until Changesets bumps it)
 ```
 
-### Publish to npm
+Root `package.json` is the private workspace. Tests live next to the source (`lib/src/*.test.ts`) and run in Vitest + jsdom.
+
+## CSS
+
+Prefix `ut-`.
+
+- Attributes: `data-ut-section`, `data-ut-list`, `data-ut-tab`, `data-ut-panel`, `data-ut-auto`, `data-ut-default`, `data-ut-disabled`, `data-ut-theme`
+- The script sets `data-ut-variant`, `data-ut-orientation`, `data-ut-side`, `data-ut-justify`, `data-ut-active`, `data-ut-transition`
+- Colors are custom properties (`--ut-indicator-color`, `--ut-border-color`, `--ut-panel-bg`, `--ut-pill-track-bg`, `--ut-pill-active-bg`, `--ut-focus-ring-color`, …)
+- Default palette is light, including when the OS prefers dark. `data-ut-theme="dark"` opts in. `data-ut-theme="light"` on a section forces light under a dark ancestor.
+
+## Behavior worth not breaking
+
+- Panels pair by matching `data-ut-tab` / `data-ut-panel` when the values agree. Missing or unmatched values fall back to index, which is what 1.5 always did.
+- `setPath`, `defaultPath`, the URL hash, and persisted state can still select a disabled id. Clicks ignore it. Arrow keys, Home, and End skip it. Disabled tabs get `aria-disabled`. The active tab keeps `tabindex="0"` even when disabled; every other tab is `-1`.
+- Hash format is `#ut-{id|section|tab}-{path}`. Persist keys are `ut-persist-{id|section|index}`.
+- `syncUrl` uses `history.replaceState` on init, `popstate`, and `hashchange`. It uses `pushState` only for a user or programmatic change.
+- `beforeChange`, then deprecated `onChange`, then `.on("beforeChange")` run before the switch and can return `false`. `.on("change")`, `afterChange`, and `.on("afterChange")` run after commit. `onChange` logs one warning outside production.
+- `getPath()` is `TabPath` (a string).
+- `createTabs` on a root that already has an instance destroys that instance first. `destroy()` releases listeners, observers, overflow DOM, equal-height styles, and in-flight transitions. It leaves roles, ARIA, hidden, variant attributes, and indicator variables as they were.
+- Importing the package auto-inits `[data-ut-section][data-ut-auto]`. `sideEffects` must not be `false`.
+
+## Commands
+
 ```bash
-cd lib && npm publish --otp=YOUR_OTP_CODE
+pnpm install
+pnpm --filter ultitabs format:check
+pnpm --filter ultitabs lint
+pnpm --filter ultitabs typecheck
+pnpm --filter ultitabs test:coverage
+pnpm build
+pnpm --filter ultitabs size
 ```
-Always bump `lib/package.json` version, update `lib/CHANGELOG.md`, and sync README before publishing.
 
-### Key files
-| File | Purpose |
-|---|---|
-| `lib/src/tabs.ts` | Core `createTabs()` — the main logic |
-| `lib/src/types.ts` | All TypeScript types (TabsConfig, TabsInstance, etc.) |
-| `lib/src/index.ts` | Entry point — exports + auto-init on DOMContentLoaded |
-| `lib/src/aria.ts` | WAI-ARIA setup and keyboard navigation |
-| `lib/src/indicator.ts` | GPU-composited indicator animation |
-| `lib/css/ultitabs.css` | Shipped CSS — variants, orientations, overflow, transitions |
-| `lib/CHANGELOG.md` | Version history |
+CI (`.github/workflows/ci.yml`) runs that same list.
 
-### CSS prefix: `ut-`
-- Data attributes: `data-ut-section`, `data-ut-list`, `data-ut-tab`, `data-ut-panel`, `data-ut-auto`, `data-ut-default`, `data-ut-disabled`
-- CSS variables: `--ut-indicator-color`, `--ut-tab-color`, `--ut-transition-duration`, etc.
-- CSS classes set by the library: `data-ut-active`, `data-ut-variant`, `data-ut-orientation`
+## Release
 
-### Current version: `1.3.0`
-Features shipped:
-- `variant`: underline / pill / bordered
-- `orientation`: horizontal / vertical + `side`: left / right
-- `justify`: start / center / end / between / around / evenly
-- `syncUrl`: syncs active tab to URL hash
-- `persist`: session / local storage
-- `data-ut-disabled`: disable individual tabs
-- `data-ut-auto` + `data-ut-default`: zero-JS auto-init
-- `overflow`: scroll arrows when tabs overflow container
-- `transition`: fade / slide panel animations
-- `onChange` returning `false` cancels tab switch
+Versions and npm publishing go through Changesets only. Do not hand-edit `lib/package.json` `"version"` and do not run `npm publish` from a feature branch.
 
-### When adding a feature
-1. Update `lib/src/types.ts` first
-2. Implement in `lib/src/tabs.ts`
-3. Add CSS to `lib/css/ultitabs.css` if needed
-4. Bump version in `lib/package.json`
-5. Update `lib/CHANGELOG.md`
-6. Sync `README.md` → `lib/README.md` (always keep in sync: `cp README.md lib/README.md`)
-7. Add demo component + playground section on the site
-8. **Update `/ultitabs-site/client/src/pages/docs/ReleaseNotes.jsx`**
+1. Add a changeset: `pnpm changeset`
+2. Merge to `main`
+3. `.github/workflows/release.yml` opens the release PR (or publishes when that PR merges)
 
----
+`lib/CHANGELOG.md` is produced by Changesets. Keep `README.md` and `lib/README.md` identical (`cp README.md lib/README.md`).
 
-## Website (`/ultitabs-site/`)
-
-### Stack
-- Vite + React (client at `client/`)
-- Express server (server at `server/`) — only used for `/api/github-stars`
-- SCSS modules (`client/src/styles/`)
-- PrismJS for code highlighting
-
-### Deploy
-```bash
-cd /Users/matanmu/Proj/ultitabs-site && ./deploy.sh
-```
-Then: **Cloudways → your app → Deployment via Git → Pull**
-
-The deploy script: builds client, force-adds `client/dist`, commits with timestamp, pushes to GitHub.
-
-### Key paths
-| Path | Purpose |
-|---|---|
-| `client/src/pages/PlaygroundPage.jsx` | All interactive examples — one section per feature |
-| `client/src/pages/docs/` | All docs pages |
-| `client/src/pages/docs/ReleaseNotes.jsx` | **Must update for every feature/fix** |
-| `client/src/components/` | Shared components + demo components |
-| `client/src/data/codeExamples.js` | All code snippets shown in the playground |
-| `client/src/styles/_playground.scss` | Examples page + sidebar styles |
-| `client/src/styles/_docs.scss` | Docs page styles |
-| `client/src/styles/_tabs.scss` | UltiTabs demo CSS (site-specific) |
-| `client/public/llms.txt` | GEO — AI crawler context file |
-| `client/public/sitemap.xml` | SEO sitemap |
-
-### Adding a new playground example
-1. Add code snippets to `client/src/data/codeExamples.js` (JS + HTML + AI Prompt variants)
-2. Create demo component in `client/src/components/YourDemo.jsx`
-3. Add section to `PlaygroundPage.jsx` with `id` attribute for sidebar scroll-spy
-4. The sidebar (`NAV_ITEMS` array at top of `PlaygroundPage.jsx`) must include the new section
-
-### Adding a new docs page
-1. Create `client/src/pages/docs/YourPage.jsx`
-2. Add route in `client/src/App.jsx`
-3. Add link in `client/src/pages/docs/DocsLayout.jsx` → `NAV_GROUPS`
-
-### Sidebar scroll-spy (Examples page)
-Uses `IntersectionObserver` with `rootMargin: '-20% 0px -70% 0px'`. Each `<section>` needs a unique `id` matching an entry in `NAV_ITEMS`.
-
-### Docs layout
-Same visual style as Examples — sticky left sidebar listing all doc pages grouped by category. Content is full-width prose. No fixed right-side TOC.
-
----
-
-## Important rules
-
-- **Always update `ReleaseNotes.jsx`** for any feature, fix, or notable change
-- **Always keep `README.md` and `lib/README.md` in sync** — copy after every change
-- The `tsconfig.base.json` warning during build is pre-existing and non-blocking — ignore it
-- Cloudways uses **Hybrid Stack** (not Lightning Stack) — this is required for React Router to work
-- The site's `client/.gitignore` excluded `dist/` — `deploy.sh` uses `git add -f client/dist` to force-include it
-- `onChange` in `TabsConfig` is called BEFORE state changes (for cancellation), then `listeners` (`.on('change')`) are called after commit
+The 2.0.0 bump is the changeset in `.changeset/`, not the version field, until the release workflow runs.

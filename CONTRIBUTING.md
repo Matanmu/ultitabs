@@ -1,69 +1,73 @@
 # Contributing to UltiTabs
 
-Thanks for your interest in contributing!
-
 ## Setup
 
 ```bash
-# Clone the repo
 git clone https://github.com/Matanmu/ultitabs.git
 cd ultitabs
-
-# Install dependencies (requires pnpm)
 pnpm install
-
-# Build all packages
-pnpm build
-
-# Watch mode for core
-cd packages/core && pnpm dev
 ```
 
-## Project Structure
+Requires Node 18+ and pnpm 10 (see `packageManager` in the root `package.json`).
+
+## Checks
+
+```bash
+pnpm --filter ultitabs format        # biome check --write
+pnpm --filter ultitabs format:check
+pnpm --filter ultitabs lint
+pnpm --filter ultitabs typecheck     # tsc --noEmit for src and for tests
+pnpm --filter ultitabs test          # vitest, jsdom
+pnpm --filter ultitabs test:coverage
+pnpm --filter ultitabs build         # minified ESM/CJS + ultitabs.min.css
+pnpm --filter ultitabs size
+```
+
+CI runs format, lint, typecheck, tests with coverage, build, and size.
+
+## Layout
 
 ```
-packages/
-  core/     — Framework-agnostic core library + CSS
-  react/    — React 18+ adapter
-  vue/      — Vue 3 adapter
-  svelte/   — Svelte 4+ adapter
-examples/
-  vanilla-html/   — Vanilla JS demo
+lib/src/tabs.ts        createTabs()
+lib/src/types.ts       public types
+lib/src/index.ts       entry + auto-init
+lib/src/aria.ts        WAI-ARIA and keyboard
+lib/src/indicator.ts   indicator geometry
+lib/src/utils.ts       shared helpers
+lib/css/ultitabs.css   source CSS
+lib/biome.json
+lib/vitest.config.ts
+lib/tsup.config.ts
+lib/tsconfig.json      library typecheck (tests excluded)
+lib/tsconfig.test.json test typecheck
 ```
 
-## Making Changes
-
-1. Fork the repo and create a branch: `git checkout -b my-fix`
-2. Make your changes in `packages/core/src/`
-3. Run `pnpm build` to verify the build passes
-4. Add a changeset describing your change: `pnpm changeset`
-5. Commit and open a pull request
+The root package is a private pnpm workspace. Only `lib/` is published.
 
 ## Changesets
 
-This repo uses [Changesets](https://github.com/changesets/changesets) for versioning.
-
-When you open a PR that changes behavior, run:
+This repo versions with [Changesets](https://github.com/changesets/changesets). That is the only release path. Do not bump `lib/package.json` by hand and do not publish to npm from a branch.
 
 ```bash
 pnpm changeset
 ```
 
-Follow the prompts to select which packages changed and describe the change.
-The CI will handle versioning and publishing when merged to `main`.
+Merging to `main` lets `.github/workflows/release.yml` open the version PR or publish it.
 
-## Reporting Bugs
+## Style
 
-Open an issue at [github.com/Matanmu/ultitabs/issues](https://github.com/Matanmu/ultitabs/issues).
-Please include a minimal reproduction.
+- TypeScript strict mode, no runtime dependencies
+- Biome formats and lints `lib/` (2-space indent, double quotes)
+- CSS uses logical properties and custom properties for color
+- Keep `README.md` and `lib/README.md` in sync
 
-## Code Style
+## Size
 
-- TypeScript strict mode throughout
-- No runtime dependencies in `ultitabs`
-- CSS uses logical properties for RTL support
-- All public APIs must be documented in the README
+size-limit budgets (minified + gzip), measured from the current build:
+
+- `dist/index.mjs` — 4.6 kB budget (about 4.25 kB today)
+- `css/ultitabs.min.css` — 2.1 kB budget (about 1.88 kB today)
 
 ## License
 
-By contributing, you agree your contributions will be licensed under the MIT License.
+By contributing, you agree your contributions are licensed under the MIT License.

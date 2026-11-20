@@ -24,44 +24,6 @@ export function setupAria(section: TabSection): void {
   });
 }
 
-function clearPanel(panel: HTMLElement): void {
-  panel.removeAttribute("role");
-  panel.removeAttribute("aria-labelledby");
-  panel.removeAttribute("tabindex");
-  panel.removeAttribute("data-ut-panel-leaving");
-  panel.removeAttribute("data-ut-panel-entering");
-  panel.style.top = "";
-  panel.style.left = "";
-  panel.style.width = "";
-  panel.hidden = false;
-}
-
-export function cleanupAria(section: TabSection): void {
-  const { list, tabs, panels, tabPanelMap } = section;
-
-  list.removeAttribute("role");
-  list.removeAttribute("aria-orientation");
-
-  tabs.forEach((tab) => {
-    tab.removeAttribute("role");
-    tab.removeAttribute("aria-controls");
-    tab.removeAttribute("aria-selected");
-    tab.removeAttribute("aria-disabled");
-    tab.removeAttribute("tabindex");
-    tab.removeAttribute("data-ut-active");
-  });
-
-  const seen = new Set<HTMLElement>();
-  panels.forEach((panel) => {
-    seen.add(panel);
-    clearPanel(panel);
-  });
-  tabPanelMap.forEach((panel) => {
-    if (seen.has(panel)) return;
-    clearPanel(panel);
-  });
-}
-
 export function updateAriaSelection(
   tabs: HTMLElement[],
   tabPanelMap: Map<number, HTMLElement>,
@@ -74,8 +36,9 @@ export function updateAriaSelection(
     tab.setAttribute("aria-selected", String(isActive));
     if (isDisabled) tab.setAttribute("aria-disabled", "true");
     else tab.removeAttribute("aria-disabled");
-    // Disabled tabs stay out of the tab sequence, including if one was active.
-    tab.setAttribute("tabindex", isActive && !isDisabled ? "0" : "-1");
+    // The active tab keeps tabindex 0 even if it is disabled, matching 1.5.
+    // Every other tab, including disabled ones, stays out of the tab sequence.
+    tab.setAttribute("tabindex", isActive ? "0" : "-1");
     if (isActive) tab.setAttribute("data-ut-active", "");
     else tab.removeAttribute("data-ut-active");
   });

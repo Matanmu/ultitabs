@@ -5,7 +5,7 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/ultitabs)](https://bundlephobia.com/package/ultitabs)
 [![license](https://img.shields.io/npm/l/ultitabs)](./LICENSE)
 
-Zero-dependency tab library — accessible tabs, a CSS indicator, infinite nesting, and RTL. Minified + gzipped: 4.33 kB of JS and 1.93 kB of CSS.
+Zero-dependency tab library — accessible tabs, a CSS indicator, infinite nesting, and RTL. Minified + gzipped: 4.25 kB of JS and 1.88 kB of CSS.
 
 **[Live Demo & Docs →](https://phpstack-370615-6257546.cloudwaysapps.com/)**
 
@@ -70,7 +70,7 @@ const tabs = createTabs({
 })
 
 tabs.setPath('features') // switch tab programmatically
-tabs.getPath()           // current tab, or null if none is selected
+tabs.getPath()           // current tab path
 tabs.on('beforeChange', fn) // subscribe (returns unsubscribe fn)
 tabs.on('afterChange', fn)
 tabs.off('afterChange', fn) // explicit unsubscribe
@@ -204,6 +204,8 @@ unsub()                       // via returned function
 tabs.off('afterChange', myFn) // or via .off()
 ```
 
+`onChange` still runs before the switch and can return `false`, same as 1.5. It is deprecated: the first time you pass it, development builds log a one-time warning. Use `beforeChange`.
+
 ---
 
 ## Auto-Init
@@ -316,13 +318,13 @@ Override any visual with a CSS custom property — no JS required:
 | `--ut-focus-ring-color` | indicator color | Focus ring |
 | `--ut-focus-ring-offset` | `2px` | Inset focus ring, so overflow does not clip it |
 
-Set `data-ut-theme="dark"` on a section or an ancestor for the dark palette. When the OS asks for dark mode, sections follow it unless `data-ut-theme="light"` opts out. With no theme attribute and no dark OS preference, the light palette above is what you get.
+The default palette is light. Set `data-ut-theme="dark"` on a section or an ancestor for the dark palette. `data-ut-theme="light"` on a section forces light under a dark ancestor. Dark mode does not follow the operating system on its own.
 
 ---
 
 ## Features
 
-- **4.33 kB JS + 1.93 kB CSS** — minified + gzipped, zero runtime dependencies, ESM + CJS, TypeScript types
+- **4.25 kB JS + 1.88 kB CSS** — minified + gzipped, zero runtime dependencies, ESM + CJS, TypeScript types
 - **CSS indicator** — underline, pill, and bordered highlights follow the active tab
 - **WAI-ARIA tabs** — `role="tablist/tab/tabpanel"`, `aria-selected`, `aria-disabled`, roving tabindex, arrow keys
 - **Infinite nesting** — 3+ levels deep, independent keyboard scope per level
@@ -336,7 +338,7 @@ Set `data-ut-theme="dark"` on a section or an ancestor for the dark palette. Whe
 - **Overflow scroll** — `overflow: true` adds scroll arrows when tabs overflow
 - **Panel transitions** — `transition: 'fade' | 'slide'` animates panel switches
 - **Equal height** — `equalHeight` / `equalPanelHeight` eliminates layout shift between panels
-- **Cancellable switches** — return `false` from `beforeChange` to block a tab switch
+- **Cancellable switches** — return `false` from `beforeChange` (or the deprecated `onChange`) to block a tab switch
 - **15+ CSS custom properties** — theme every pixel without touching JS
 
 ---
@@ -369,7 +371,7 @@ Add `dir="rtl"` to the section or any ancestor — everything flips automaticall
 
 | | UltiTabs | Others |
 |---|---|---|
-| Bundle size | **4.33 kB JS + 1.93 kB CSS** (min + gzip) | 5–30kb |
+| Bundle size | **4.25 kB JS + 1.88 kB CSS** (min + gzip) | 5–30kb |
 | Dependencies | **0** | 2–15 |
 | CSS-driven animation | **Yes** | Rarely |
 | Infinite nesting | **Yes** | No |

@@ -24,16 +24,17 @@ Prefix `ut-`.
 - Attributes: `data-ut-section`, `data-ut-list`, `data-ut-tab`, `data-ut-panel`, `data-ut-auto`, `data-ut-default`, `data-ut-disabled`, `data-ut-theme`
 - The script sets `data-ut-variant`, `data-ut-orientation`, `data-ut-side`, `data-ut-justify`, `data-ut-active`, `data-ut-transition`
 - Colors are custom properties (`--ut-indicator-color`, `--ut-border-color`, `--ut-panel-bg`, `--ut-pill-track-bg`, `--ut-pill-active-bg`, `--ut-focus-ring-color`, …)
-- Default palette is light. `data-ut-theme="dark"` or `prefers-color-scheme: dark` selects the dark palette. `data-ut-theme="light"` forces light.
+- Default palette is light, including when the OS prefers dark. `data-ut-theme="dark"` opts in. `data-ut-theme="light"` on a section forces light under a dark ancestor.
 
 ## Behavior worth not breaking
 
-- Panels pair by matching `data-ut-tab` / `data-ut-panel`. Index pairing is only when those values are missing.
-- `setPath` refuses a disabled id. Arrow keys, Home, and End skip disabled tabs. Disabled tabs get `aria-disabled` and `tabindex="-1"`.
+- Panels pair by matching `data-ut-tab` / `data-ut-panel` when the values agree. Missing or unmatched values fall back to index, which is what 1.5 always did.
+- `setPath`, `defaultPath`, the URL hash, and persisted state can still select a disabled id. Clicks ignore it. Arrow keys, Home, and End skip it. Disabled tabs get `aria-disabled`. The active tab keeps `tabindex="0"` even when disabled; every other tab is `-1`.
+- Hash format is `#ut-{id|section|tab}-{path}`. Persist keys are `ut-persist-{id|section|index}`.
 - `syncUrl` uses `history.replaceState` on init, `popstate`, and `hashchange`. It uses `pushState` only for a user or programmatic change.
-- `beforeChange` (config and `.on("beforeChange")`) runs before the switch and can return `false`. `.on("change")`, `afterChange`, and `.on("afterChange")` run after commit. There is no `onChange` config.
-- `getPath()` is `TabPath | null`.
-- `createTabs` on a root that already has an instance destroys that instance first. `destroy()` removes listeners, roles, ARIA, tabindex, hidden, indicator variables, overflow DOM, and equal-height inline styles.
+- `beforeChange`, then deprecated `onChange`, then `.on("beforeChange")` run before the switch and can return `false`. `.on("change")`, `afterChange`, and `.on("afterChange")` run after commit. `onChange` logs one warning outside production.
+- `getPath()` is `TabPath` (a string).
+- `createTabs` on a root that already has an instance destroys that instance first. `destroy()` releases listeners, observers, overflow DOM, equal-height styles, and in-flight transitions. It leaves roles, ARIA, hidden, variant attributes, and indicator variables as they were.
 - Importing the package auto-inits `[data-ut-section][data-ut-auto]`. `sideEffects` must not be `false`.
 
 ## Commands

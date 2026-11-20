@@ -1,7 +1,7 @@
 /**
- * UltiTabs v2.0 — comprehensive test suite
- * Covers: basic switching, hooks, keyboard navigation, disabled tabs,
- * panel pairing by value, ARIA, destroy/double-init, persist, syncUrl.
+ * UltiTabs behavior tests.
+ * Covers switching, hooks, keyboard navigation, disabled tabs,
+ * panel pairing, ARIA, destroy/double-init, persist, and syncUrl.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTabs } from "./tabs";
@@ -241,13 +241,15 @@ describe("panel pairing by value", () => {
 // ── Disabled tabs ────────────────────────────────────────────────────────────
 
 describe("disabled tabs", () => {
-  it("setPath refuses disabled tabs", () => {
+  it("setPath still selects a disabled tab, matching 1.5", () => {
     const section = makeDOMWithDisabled();
     const tabs = createTabs({ el: section });
     expect(tabs.getPath()).toBe("a");
-    tabs.setPath("b"); // disabled
-    expect(tabs.getPath()).toBe("a");
-    tabs.setPath("d"); // enabled
+    tabs.setPath("b");
+    expect(tabs.getPath()).toBe("b");
+    expect(getTabs(section)[1].getAttribute("tabindex")).toBe("0");
+    expect(getTabs(section)[1].getAttribute("aria-disabled")).toBe("true");
+    tabs.setPath("d");
     expect(tabs.getPath()).toBe("d");
     tabs.destroy();
   });
@@ -521,23 +523,19 @@ describe("destroy", () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
-  it("removes ARIA attributes", () => {
+  it("leaves roles, selection, and panel visibility in place", () => {
     const section = makeDOM();
     const tabs = createTabs({ el: section });
+    tabs.setPath("b");
     tabs.destroy();
     const list = section.querySelector("[data-ut-list]");
-    expect(list?.getAttribute("role")).toBeNull();
-    getTabs(section).forEach((tab) => {
-      expect(tab.getAttribute("role")).toBeNull();
-      expect(tab.getAttribute("aria-selected")).toBeNull();
-    });
-    getPanels(section).forEach((panel) => {
-      expect(panel.getAttribute("role")).toBeNull();
-      expect(panel.hidden).toBe(false);
-    });
+    expect(list?.getAttribute("role")).toBe("tablist");
+    expect(getTabs(section)[1].getAttribute("aria-selected")).toBe("true");
+    expect(getPanels(section)[0].hidden).toBe(true);
+    expect(getPanels(section)[1].hidden).toBe(false);
   });
 
-  it("removes variant/orientation attributes", () => {
+  it("leaves variant and orientation attributes in place", () => {
     const section = makeDOM();
     const tabs = createTabs({
       el: section,
@@ -545,8 +543,8 @@ describe("destroy", () => {
       orientation: "vertical",
     });
     tabs.destroy();
-    expect(section.getAttribute("data-ut-variant")).toBeNull();
-    expect(section.getAttribute("data-ut-orientation")).toBeNull();
+    expect(section.getAttribute("data-ut-variant")).toBe("pill");
+    expect(section.getAttribute("data-ut-orientation")).toBe("vertical");
   });
 });
 
@@ -741,7 +739,7 @@ describe("panel pairing fallback", () => {
     tabs.destroy();
   });
 
-  it("does not index-fallback when a value is present but unmatched", () => {
+  it("index-fallbacks when a value is present but unmatched", () => {
     const section = document.createElement("div");
     section.setAttribute("data-ut-section", "orphan");
     const list = document.createElement("div");
@@ -752,13 +750,14 @@ describe("panel pairing fallback", () => {
     list.appendChild(tab);
     const panel = document.createElement("div");
     panel.setAttribute("data-ut-panel", "zzz");
+    panel.id = "orphan-panel";
     panel.textContent = "orphan";
     section.append(list, panel);
     document.body.appendChild(section);
 
     const tabs = createTabs({ el: section });
-    expect(tab.getAttribute("aria-controls")).toBeNull();
-    expect(panel.hidden).toBe(true);
+    expect(tab.getAttribute("aria-controls")).toBe("orphan-panel");
+    expect(panel.hidden).toBe(false);
     tabs.destroy();
   });
 });
@@ -819,13 +818,13 @@ describe("keyboard navigation — more cases", () => {
     const section = makeDOM(["a", "b"]);
     getTabs(section).forEach((tab) => tab.setAttribute("data-ut-disabled", ""));
     const tabs = createTabs({ el: section });
-    expect(tabs.getPath()).toBeNull();
+    expect(tabs.getPath()).toBe("a");
     const tabEls = getTabs(section);
     tabEls[0].focus();
     simulateKeyDown(tabEls[0], "ArrowRight");
     simulateKeyDown(tabEls[0], "Home");
     simulateKeyDown(tabEls[0], "End");
-    expect(tabs.getPath()).toBeNull();
+    expect(tabs.getPath()).toBe("a");
     tabs.destroy();
   });
 
@@ -841,24 +840,25 @@ describe("keyboard navigation — more cases", () => {
 });
 
 describe("disabled tabs — setPath", () => {
-  it("does not run beforeChange when the target is disabled", () => {
+  it("runs beforeChange when the target is disabled", () => {
     const section = makeDOMWithDisabled();
     const before = vi.fn();
     const tabs = createTabs({ el: section, beforeChange: before });
     tabs.setPath("b");
-    expect(before).not.toHaveBeenCalled();
-    expect(tabs.getPath()).toBe("a");
+    expect(before).toHaveBeenCalledWith("b", "a");
+    expect(tabs.getPath()).toBe("b");
     tabs.destroy();
   });
 
-  it("never gives a disabled tab tabindex 0", () => {
+  it("keeps tabindex 0 on a disabled tab that was selected", () => {
     const section = makeDOM(["a", "b"]);
     getTabs(section)[0].setAttribute("data-ut-disabled", "");
     const tabs = createTabs({ el: section, defaultPath: "a" });
     const tabEls = getTabs(section);
-    expect(tabs.getPath()).toBe("b");
-    expect(tabEls[0].getAttribute("tabindex")).toBe("-1");
-    expect(tabEls[1].getAttribute("tabindex")).toBe("0");
+    expect(tabs.getPath()).toBe("a");
+    expect(tabEls[0].getAttribute("tabindex")).toBe("0");
+    expect(tabEls[0].getAttribute("aria-disabled")).toBe("true");
+    expect(tabEls[1].getAttribute("tabindex")).toBe("-1");
     tabs.destroy();
   });
 });
@@ -922,11 +922,11 @@ describe("syncUrl history", () => {
     tabs.destroy();
   });
 
-  it("refuses a disabled id from the URL", () => {
+  it("opens a disabled id from the URL", () => {
     const section = makeDOMWithDisabled();
     history.replaceState(null, "", `${location.pathname}#ut-test-b`);
     const tabs = createTabs({ el: section, syncUrl: true });
-    expect(tabs.getPath()).toBe("a");
+    expect(tabs.getPath()).toBe("b");
     tabs.destroy();
   });
 
@@ -936,7 +936,7 @@ describe("syncUrl history", () => {
     tabs.destroy();
     history.replaceState(null, "", `${location.pathname}${hashFor("c")}`);
     window.dispatchEvent(new PopStateEvent("popstate"));
-    expect(getTabs(section)[2].getAttribute("aria-selected")).toBeNull();
+    expect(getTabs(section)[2].getAttribute("aria-selected")).toBe("false");
   });
 });
 
@@ -949,12 +949,12 @@ describe("persist keys", () => {
     tabs.destroy();
   });
 
-  it("ignores a persisted disabled tab", () => {
+  it("restores a persisted disabled tab", () => {
     const section = makeDOMWithDisabled();
     section.id = "persist-disabled";
     sessionStorage.setItem("ut-persist-persist-disabled", "b");
     const tabs = createTabs({ el: section, persist: "session" });
-    expect(tabs.getPath()).toBe("a");
+    expect(tabs.getPath()).toBe("b");
     tabs.destroy();
   });
 
@@ -1021,7 +1021,8 @@ describe("transitions cleanup", () => {
     tabs.destroy();
     expect(panels[0].hasAttribute("data-ut-panel-leaving")).toBe(false);
     expect(panels[2].hasAttribute("data-ut-panel-entering")).toBe(false);
-    expect(panels.every((panel) => panel.hidden === false)).toBe(true);
+    expect(panels[0].hidden).toBe(true);
+    expect(panels[2].hidden).toBe(false);
   });
 });
 
@@ -1237,22 +1238,19 @@ describe("equalHeight cleanup", () => {
 });
 
 describe("destroy and double-init details", () => {
-  it("removes indicator variables, tabindex, and aria-disabled", () => {
+  it("keeps indicator variables, tabindex, and aria-disabled", () => {
     const section = makeDOMWithDisabled();
     const tabs = createTabs({ el: section });
     const list = section.querySelector<HTMLElement>("[data-ut-list]")!;
     expect(list.style.getPropertyValue("--ut-indicator-width")).not.toBe("");
-    expect(getTabs(section)[1].getAttribute("aria-disabled")).toBe("true");
+    section.dataset.utInitialized = "1";
     tabs.destroy();
-    expect(list.style.getPropertyValue("--ut-indicator-left")).toBe("");
-    expect(list.style.getPropertyValue("--ut-indicator-width")).toBe("");
-    getTabs(section).forEach((tab) => {
-      expect(tab.getAttribute("tabindex")).toBeNull();
-      expect(tab.getAttribute("aria-disabled")).toBeNull();
-      expect(tab.hasAttribute("data-ut-active")).toBe(false);
-    });
-    expect(list.getAttribute("aria-orientation")).toBeNull();
-    expect(section.dataset.utInitialized).toBeUndefined();
+    expect(list.style.getPropertyValue("--ut-indicator-width")).not.toBe("");
+    expect(getTabs(section)[0].getAttribute("tabindex")).toBe("0");
+    expect(getTabs(section)[1].getAttribute("aria-disabled")).toBe("true");
+    expect(getTabs(section)[0].hasAttribute("data-ut-active")).toBe(true);
+    expect(list.getAttribute("aria-orientation")).toBe("horizontal");
+    expect(section.dataset.utInitialized).toBe("1");
   });
 
   it("does not fire two click handlers after a second createTabs", () => {

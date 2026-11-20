@@ -1,6 +1,6 @@
-/* ultitabs — default (light) theme. Dark tokens are opt-in via
-   [data-ut-theme="dark"] or prefers-color-scheme, and [data-ut-theme="light"]
-   forces the palette below. */
+/* ultitabs — default (light) theme, matching 1.5. Dark is opt-in via
+   [data-ut-theme="dark"] on the section or an ancestor. [data-ut-theme="light"]
+   on a section forces light even under a dark ancestor. */
 
 [data-ut-section] {
   /* Indicator */
@@ -24,7 +24,7 @@
   --ut-panel-bg: #fff;
   --ut-pill-track-bg: #f3f4f6;
   --ut-pill-active-bg: #fff;
-  --ut-pill-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 1px 3px rgba(17, 24, 39, 0.06);
+  --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
   /* Focus ring is drawn inside the tab so overflow clipping cannot eat it. */
   --ut-focus-ring-color: var(--ut-indicator-color);
@@ -47,33 +47,6 @@
   --ut-focus-ring-color: #93c5fd;
 }
 
-@media (prefers-color-scheme: dark) {
-  [data-ut-section]:not([data-ut-theme="light"]) {
-    --ut-indicator-color: #60a5fa;
-    --ut-tab-color: #9ca3af;
-    --ut-tab-active-color: #f9fafb;
-    --ut-border-color: #374151;
-    --ut-panel-bg: #1f2937;
-    --ut-pill-track-bg: #111827;
-    --ut-pill-active-bg: #374151;
-    --ut-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-    --ut-focus-ring-color: #93c5fd;
-  }
-
-  /* An ancestor opted out of the OS dark theme. */
-  [data-ut-theme="light"] [data-ut-section] {
-    --ut-indicator-color: #3b82f6;
-    --ut-tab-color: #6b7280;
-    --ut-tab-active-color: #111827;
-    --ut-border-color: #e5e7eb;
-    --ut-panel-bg: #fff;
-    --ut-pill-track-bg: #f3f4f6;
-    --ut-pill-active-bg: #fff;
-    --ut-pill-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 1px 3px rgba(17, 24, 39, 0.06);
-    --ut-focus-ring-color: #3b82f6;
-  }
-}
-
 /* A section that explicitly asks for light wins over an ancestor dark theme. */
 [data-ut-section][data-ut-theme="light"] {
   --ut-indicator-color: #3b82f6;
@@ -83,7 +56,7 @@
   --ut-panel-bg: #fff;
   --ut-pill-track-bg: #f3f4f6;
   --ut-pill-active-bg: #fff;
-  --ut-pill-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 1px 3px rgba(17, 24, 39, 0.06);
+  --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   --ut-focus-ring-color: #3b82f6;
 }
 
@@ -335,6 +308,7 @@
   position: relative;
   display: flex;
   align-items: stretch;
+  overflow: hidden;
 }
 
 [data-ut-scroller] [data-ut-list] {

@@ -65,8 +65,8 @@ Merging to `main` lets `.github/workflows/release.yml` open the version PR or pu
 
 size-limit budgets (minified + gzip), measured from the current build:
 
-- `dist/index.mjs` — 4.6 kB budget (about 4.33 kB today)
-- `css/ultitabs.min.css` — 2.1 kB budget (about 1.93 kB today)
+- `dist/index.mjs` — 4.6 kB budget (about 4.25 kB today)
+- `css/ultitabs.min.css` — 2.1 kB budget (about 1.88 kB today)
 
 ## License
 

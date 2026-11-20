@@ -28,6 +28,11 @@ export interface TabsConfig {
   transition?: Transition;
   equalHeight?: boolean;
   equalPanelHeight?: boolean;
+  /**
+   * @deprecated Use `beforeChange`. Still called before the switch and can
+   * return `false` to cancel. Passing it logs a one-time warning outside production.
+   */
+  onChange?: TabBeforeChangeHandler;
   /** Called before state change. Return false to cancel the switch. */
   beforeChange?: TabBeforeChangeHandler;
   /** Called after state change and all listeners have been notified. */
@@ -35,8 +40,8 @@ export interface TabsConfig {
 }
 
 export interface TabsInstance {
-  /** Active tab, or `null` when every tab is disabled or none could be selected. */
-  getPath(): TabPath | null;
+  /** Active tab path. Empty only when the widget has no selectable tab. */
+  getPath(): TabPath;
   setPath(path: TabPath): void;
   destroy(): void;
   /** Subscribe to a hook. Returns an unsubscribe function. */
@@ -52,6 +57,6 @@ export interface TabSection {
   list: HTMLElement;
   tabs: HTMLElement[];
   panels: HTMLElement[];
-  /** Maps tab index to its paired panel (matched by value, or by index when values are missing). */
+  /** Maps tab index to its panel. Value matches win; everything else stays index-paired. */
   tabPanelMap: Map<number, HTMLElement>;
 }

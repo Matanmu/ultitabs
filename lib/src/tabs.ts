@@ -1,10 +1,5 @@
-import { cleanupAria, setupAria, setupKeyboard, updateAriaSelection } from "./aria";
-import {
-  cleanupIndicator,
-  observeResize,
-  updateIndicator,
-  updateIndicatorNextFrame,
-} from "./indicator";
+import { setupAria, setupKeyboard, updateAriaSelection } from "./aria";
+import { observeResize, updateIndicator, updateIndicatorNextFrame } from "./indicator";
 import type {
   TabBeforeChangeHandler,
   TabChangeHandler,
@@ -22,6 +17,18 @@ import {
 } from "./utils";
 
 const instances = new WeakMap<HTMLElement, TabsInstance>();
+let onChangeWarningShown = false;
+
+function warnOnChangeDeprecated(): void {
+  if (onChangeWarningShown) return;
+  onChangeWarningShown = true;
+  const nodeEnv = (globalThis as { process?: { env?: { NODE_ENV?: string } } }).process?.env
+    ?.NODE_ENV;
+  if (nodeEnv === "production") return;
+  console.warn(
+    "[ultitabs] `onChange` is deprecated and will be removed in a future major version. Use `beforeChange`.",
+  );
+}
 
 export function createTabs(config: TabsConfig): TabsInstance {
   const {
@@ -37,7 +44,10 @@ export function createTabs(config: TabsConfig): TabsInstance {
     equalPanelHeight = false,
     beforeChange,
     afterChange,
+    onChange,
   } = config;
+
+  if (onChange) warnOnChangeDeprecated();
 
   const root = resolveElement(config.el);
 
@@ -85,12 +95,6 @@ export function createTabs(config: TabsConfig): TabsInstance {
   // True while applying a URL that the browser already committed (init, popstate, hashchange).
   let isRestoringHistory = false;
 
-  function isSelectable(path: string | null | undefined): path is string {
-    if (!path) return false;
-    const tab = tabs.find((item) => getTabPath(item) === path);
-    return !!tab && !tab.hasAttribute("data-ut-disabled");
-  }
-
   function writeUrl(path: TabPath, mode: "push" | "replace") {
     const url = new URL(window.location.href);
     url.hash = `ut-${getTabId(root)}-${path}`;
@@ -106,7 +110,7 @@ export function createTabs(config: TabsConfig): TabsInstance {
     const before = currentPath;
     setPath(path);
     isRestoringHistory = false;
-    // setPath refuses disabled ids. Put the hash back on the tab that stayed active.
+    // Unknown hash: put the URL back on the tab that stayed active.
     if (currentPath === before && currentPath && syncUrl) writeUrl(currentPath, "replace");
   }
 
@@ -134,8 +138,8 @@ export function createTabs(config: TabsConfig): TabsInstance {
     window.addEventListener("hashchange", restoreFromUrl);
   }
 
-  function getPath(): TabPath | null {
-    return currentPath;
+  function getPath(): TabPath {
+    return currentPath ?? "";
   }
 
   function setPath(path: TabPath, defer = false): void {
@@ -144,10 +148,10 @@ export function createTabs(config: TabsConfig): TabsInstance {
 
     const index = tabs.findIndex((tab) => getTabPath(tab) === path);
     if (index === -1) return;
-    if (tabs[index].hasAttribute("data-ut-disabled")) return;
 
     if (!defer) {
       if (beforeChange?.(path, prevPath) === false) return;
+      if (onChange?.(path, prevPath) === false) return;
       for (const fn of beforeListeners) {
         if (fn(path, prevPath) === false) return;
       }
@@ -204,16 +208,9 @@ export function createTabs(config: TabsConfig): TabsInstance {
     listeners.clear();
     beforeListeners.clear();
     afterListeners.clear();
-
-    root.removeAttribute("data-ut-variant");
-    root.removeAttribute("data-ut-orientation");
-    root.removeAttribute("data-ut-side");
-    root.removeAttribute("data-ut-transition");
-    delete root.dataset.utInitialized;
-    list.removeAttribute("data-ut-justify");
-
-    cleanupAria(section);
-    cleanupIndicator(list);
+    // 1.5 left roles, hidden, variant attributes, and indicator variables in
+    // place, so a destroyed widget keeps the appearance it had. Listeners,
+    // observers, the overflow scroller, and equal-height styles are released.
   }
 
   function on(event: "beforeChange", handler: TabBeforeChangeHandler): () => void;
@@ -248,13 +245,15 @@ export function createTabs(config: TabsConfig): TabsInstance {
     listeners.delete(handler as TabChangeHandler);
   }
 
-  // config.defaultPath and data-ut-default, then the URL, then storage, then the first enabled tab.
-  const initialPath = [
-    config.defaultPath ?? root.getAttribute("data-ut-default"),
-    syncUrl ? getHashPath(root) : null,
-    storage ? storage.getItem(storageKey) : null,
-    getTabPath(tabs.find((tab) => !tab.hasAttribute("data-ut-disabled")) ?? tabs[0]),
-  ].find((candidate) => isSelectable(candidate));
+  // Same priority as 1.5: config, data-ut-default, URL hash, storage, first enabled tab.
+  const defaultPath = config.defaultPath ?? root.getAttribute("data-ut-default") ?? undefined;
+  const urlPath = syncUrl ? getHashPath(root) : null;
+  const persistedPath = storage ? storage.getItem(storageKey) : null;
+  const initialPath =
+    defaultPath ??
+    urlPath ??
+    persistedPath ??
+    getTabPath(tabs.find((tab) => !tab.hasAttribute("data-ut-disabled")) ?? tabs[0]);
 
   if (initialPath) setPath(initialPath, true);
 
@@ -294,11 +293,11 @@ function pairPanels(tabs: HTMLElement[], panels: HTMLElement[]): Map<number, HTM
     used.add(panel);
   });
 
-  // Index pairing is only for tabs that have no value. A present-but-unmatched
-  // value must not steal another tab's panel.
-  tabs.forEach((tab, index) => {
+  // 1.5 paired by index. Tabs whose values are missing or match nothing keep
+  // that index so existing pages do not move. A panel already claimed by a
+  // real value match is left alone.
+  tabs.forEach((_tab, index) => {
     if (map.has(index)) return;
-    if (attributeValue(tab, "data-ut-tab")) return;
     const panel = panels[index];
     if (!panel || used.has(panel)) return;
     map.set(index, panel);
@@ -310,7 +309,7 @@ function pairPanels(tabs: HTMLElement[], panels: HTMLElement[]): Map<number, HTM
 
 function attributeValue(element: HTMLElement, name: string): string | null {
   const value = element.getAttribute(name);
-  if (value === null || value.trim() === "") return null;
+  if (value === null || value === "") return null;
   return value;
 }
 

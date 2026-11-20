@@ -28,8 +28,6 @@ export interface TabsConfig {
   transition?: Transition;
   equalHeight?: boolean;
   equalPanelHeight?: boolean;
-  /** @deprecated Use `beforeChange` instead. Called before state change; return false to cancel. */
-  onChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
   /** Called before state change. Return false to cancel the switch. */
   beforeChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
   /** Called after state change and all listeners have been notified. */
@@ -53,4 +51,6 @@ export interface TabSection {
   list: HTMLElement;
   tabs: HTMLElement[];
   panels: HTMLElement[];
+  /** Maps tab index to its paired panel (matched by value or fallback to index) */
+  tabPanelMap: Map<number, HTMLElement>;
 }

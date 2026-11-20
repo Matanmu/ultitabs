@@ -1,11 +1,10 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
     "declaration": true,
-    "strict": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "noEmit": false
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/test.setup.ts"]
 }

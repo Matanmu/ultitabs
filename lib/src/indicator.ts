@@ -31,7 +31,8 @@ export function observeResize(
 ): () => void {
   const ro = new ResizeObserver(() => {
     const idx = getActiveIndex();
-    if (tabs[idx]) {
+    if (tabs[idx])
+    {
       updateIndicator(list, tabs[idx]);
     }
   });
@@ -40,4 +41,11 @@ export function observeResize(
   tabs.forEach((tab) => ro.observe(tab));
 
   return () => ro.disconnect();
+}
+
+export function cleanupIndicator(list: HTMLElement): void {
+  list.style.removeProperty("--ut-indicator-left");
+  list.style.removeProperty("--ut-indicator-top");
+  list.style.removeProperty("--ut-indicator-width");
+  list.style.removeProperty("--ut-indicator-height-val");
 }

@@ -1,17 +1,64 @@
 /* ultitabs — default styles */
 
 [data-ut-section] {
+  /* Indicator */
   --ut-indicator-color: #3b82f6;
   --ut-indicator-height: 2px;
   --ut-indicator-radius: 0;
   --ut-indicator-duration: 250ms;
   --ut-indicator-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Tab text */
   --ut-tab-color: #6b7280;
   --ut-tab-active-color: #111827;
+  --ut-tab-disabled-opacity: 0.5;
   --ut-tab-gap: 0;
   --ut-tab-padding: 0.625rem 1rem;
   --ut-tab-font-size: 0.875rem;
   --ut-tab-font-weight: 500;
+
+  /* Borders & backgrounds */
+  --ut-border-color: #e5e7eb;
+  --ut-panel-bg: #fff;
+  --ut-pill-track-bg: #f3f4f6;
+  --ut-pill-active-bg: #fff;
+  --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  /* Focus ring */
+  --ut-focus-ring-color: var(--ut-indicator-color);
+  --ut-focus-ring-offset: 2px;
+
+  /* Panel transitions */
+  --ut-transition-duration: 200ms;
+}
+
+/* ── Dark theme ── */
+[data-ut-theme="dark"],
+@media (prefers-color-scheme: dark) {
+  [data-ut-section]:not([data-ut-theme="light"]) {
+    --ut-indicator-color: #60a5fa;
+    --ut-tab-color: #9ca3af;
+    --ut-tab-active-color: #f9fafb;
+    --ut-border-color: #374151;
+    --ut-panel-bg: #1f2937;
+    --ut-pill-track-bg: #374151;
+    --ut-pill-active-bg: #4b5563;
+    --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --ut-focus-ring-color: #60a5fa;
+  }
+}
+
+/* Explicit dark theme override */
+[data-ut-theme="dark"] {
+  --ut-indicator-color: #60a5fa;
+  --ut-tab-color: #9ca3af;
+  --ut-tab-active-color: #f9fafb;
+  --ut-border-color: #374151;
+  --ut-panel-bg: #1f2937;
+  --ut-pill-track-bg: #374151;
+  --ut-pill-active-bg: #4b5563;
+  --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --ut-focus-ring-color: #60a5fa;
 }
 
 /* Tab list */
@@ -61,13 +108,21 @@
 }
 
 [data-ut-tab]:focus-visible {
-  outline: 2px solid var(--ut-indicator-color);
-  outline-offset: -2px;
+  outline: 2px solid var(--ut-focus-ring-color);
+  outline-offset: var(--ut-focus-ring-offset);
   border-radius: 4px;
+  z-index: 2;
 }
 
 [data-ut-tab][data-ut-active] {
   color: var(--ut-tab-active-color);
+}
+
+/* Disabled tabs */
+[data-ut-tab][data-ut-disabled] {
+  opacity: var(--ut-tab-disabled-opacity);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Panel */
@@ -81,7 +136,7 @@
 
 /* ── Variant: underline ── */
 [data-ut-variant="underline"] [data-ut-list] {
-  border-block-end: 1px solid #e5e7eb;
+  border-block-end: 1px solid var(--ut-border-color);
 }
 
 [data-ut-variant="underline"] [data-ut-list]::after {
@@ -103,7 +158,7 @@
 }
 
 [data-ut-variant="pill"] [data-ut-list] {
-  background: #f3f4f6;
+  background: var(--ut-pill-track-bg);
   border-radius: 9999px;
   padding: 4px;
 }
@@ -115,9 +170,9 @@
   inset-inline-end: auto;
   width: var(--ut-indicator-width, 0);
   height: var(--ut-indicator-height-val, 0);
-  background: #fff;
+  background: var(--ut-pill-active-bg);
   border-radius: var(--ut-indicator-radius);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ut-pill-shadow);
   z-index: 0;
   transition-property: inset-inline-start, inset-block-start, width, height;
 }
@@ -134,7 +189,7 @@
 }
 
 [data-ut-variant="bordered"] [data-ut-list] {
-  border-block-end: 1px solid #e5e7eb;
+  border-block-end: 1px solid var(--ut-border-color);
 }
 
 [data-ut-variant="bordered"] [data-ut-list]::after {
@@ -150,17 +205,17 @@
 }
 
 [data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--ut-border-color);
   border-block-end-color: transparent;
   border-start-start-radius: 6px;
   border-start-end-radius: 6px;
   border-end-start-radius: 0;
   border-end-end-radius: 0;
   margin-block-end: -1px;
-  background: var(--ut-panel-bg, #fff);
+  background: var(--ut-panel-bg);
 }
 
-/* ── Orientation: vertical ── (must come AFTER variant rules to win the cascade) */
+/* ── Orientation: vertical ── (must come AFTER variant rules to win cascade) */
 [data-ut-orientation="vertical"] {
   display: flex;
   align-items: stretch;
@@ -206,13 +261,35 @@
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="underline"] [data-ut-list],
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-list] {
   border-block-end: none;
-  border-inline-end: 1px solid #e5e7eb;
+  border-inline-end: 1px solid var(--ut-border-color);
 }
 
 [data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="underline"] [data-ut-list],
 [data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] [data-ut-list] {
   border-block-end: none;
-  border-inline-start: 1px solid #e5e7eb;
+  border-inline-start: 1px solid var(--ut-border-color);
+}
+
+/* ── Vertical + pill — reset horizontal pill styles and apply vertical ── */
+[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-list] {
+  border-radius: 12px;
+  padding: 4px;
+}
+
+[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-list]::after {
+  /* Vertical pill indicator uses block-start/height like other vertical */
+  inset-block-start: var(--ut-indicator-top, 0);
+  inset-block-end: auto;
+  inset-inline-start: var(--ut-indicator-left, 0);
+  inset-inline-end: auto;
+  width: var(--ut-indicator-width, 0);
+  height: var(--ut-indicator-height-val, 0);
+  border-radius: 8px;
+  transition-property: inset-block-start, inset-inline-start, width, height;
+}
+
+[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-tab] {
+  border-radius: 8px;
 }
 
 /* ── Overflow scroll ── */
@@ -252,6 +329,24 @@
   transition: color 150ms ease, opacity 150ms ease;
 }
 
+/* Logical arrow glyphs via CSS pseudo-elements */
+[data-ut-scroll-btn="start"]::before {
+  content: "\2039"; /* Single left-pointing angle quotation mark */
+}
+
+[data-ut-scroll-btn="end"]::before {
+  content: "\203A"; /* Single right-pointing angle quotation mark */
+}
+
+/* Vertical scroll buttons use up/down arrows */
+[data-ut-orientation="vertical"] [data-ut-scroll-btn="start"]::before {
+  content: "\2303"; /* Up arrowhead */
+}
+
+[data-ut-orientation="vertical"] [data-ut-scroll-btn="end"]::before {
+  content: "\2304"; /* Down arrowhead */
+}
+
 [data-ut-scroll-btn]:hover {
   color: var(--ut-tab-active-color);
 }
@@ -273,17 +368,29 @@
 
 /* ── Panel transitions ── */
 
-[data-ut-section] {
-  --ut-transition-duration: 200ms;
+/* Wrapper for transitions needs to establish stacking context */
+[data-ut-transition] {
+  position: relative;
 }
 
+/* Entering panel animation */
 [data-ut-panel][data-ut-panel-entering="fade"] {
   animation: ut-fade-in var(--ut-transition-duration) ease forwards;
 }
 
+[data-ut-panel][data-ut-panel-entering="slide"] {
+  animation: ut-slide-in var(--ut-transition-duration)
+    cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Leaving panel — position absolute to overlay, not disrupt layout */
 [data-ut-panel][data-ut-panel-leaving] {
-  position: absolute;
+  position: absolute !important;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   pointer-events: none;
+  opacity: 0;
 }
 
 @keyframes ut-fade-in {
@@ -291,43 +398,72 @@
   to   { opacity: 1; }
 }
 
-[data-ut-panel][data-ut-panel-entering="slide"] {
-  animation: ut-slide-in var(--ut-transition-duration) cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
 @keyframes ut-slide-in {
-  from { opacity: 0; transform: translateX(12px); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
-/* Panel container needs position:relative for the leaving panel overlay */
-[data-ut-transition] [data-ut-panel] {
-  position: relative;
+/* RTL slide direction */
+[dir="rtl"] [data-ut-panel][data-ut-panel-entering="slide"],
+:dir(rtl) [data-ut-panel][data-ut-panel-entering="slide"] {
+  animation-name: ut-slide-in-rtl;
+}
+
+@keyframes ut-slide-in-rtl {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  [data-ut-list]::after {
+    transition-duration: 0.01ms !important;
+  }
+
+  [data-ut-panel][data-ut-panel-entering] {
+    animation-duration: 0.01ms !important;
+  }
+
+  [data-ut-tab] {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Vertical bordered — active tab bleeds into panel */
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--ut-border-color);
   border-inline-end-color: transparent;
-  border-block-end-color: #e5e7eb;
+  border-block-end-color: var(--ut-border-color);
   border-start-start-radius: 6px;
   border-end-start-radius: 6px;
   border-start-end-radius: 0;
   border-end-end-radius: 0;
   margin-inline-end: -1px;
   margin-block-end: 0;
-  background: var(--ut-panel-bg, #fff);
+  background: var(--ut-panel-bg);
 }
 
 [data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--ut-border-color);
   border-inline-start-color: transparent;
-  border-block-end-color: #e5e7eb;
+  border-block-end-color: var(--ut-border-color);
   border-start-end-radius: 6px;
   border-end-end-radius: 6px;
   border-start-start-radius: 0;
   border-end-start-radius: 0;
   margin-inline-start: -1px;
   margin-block-end: 0;
-  background: var(--ut-panel-bg, #fff);
+  background: var(--ut-panel-bg);
 }

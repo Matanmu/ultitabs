@@ -1,7 +1,27 @@
-import type { TabPath, TabsConfig, TabsInstance, TabSection, TabChangeHandler, TabBeforeChangeHandler } from "./types";
+import type {
+  TabPath,
+  TabsConfig,
+  TabsInstance,
+  TabSection,
+  TabChangeHandler,
+  TabBeforeChangeHandler,
+} from "./types";
 import { resolveElement } from "./utils";
-import { setupAria, updateAriaSelection, setupKeyboard } from "./aria";
-import { updateIndicator, updateIndicatorNextFrame, observeResize } from "./indicator";
+import {
+  setupAria,
+  cleanupAria,
+  updateAriaSelection,
+  setupKeyboard,
+} from "./aria";
+import {
+  updateIndicator,
+  updateIndicatorNextFrame,
+  observeResize,
+  cleanupIndicator,
+} from "./indicator";
+
+// Track instances to prevent double-init
+const instances = new WeakMap<HTMLElement, TabsInstance>();
 
 export function createTabs(config: TabsConfig): TabsInstance {
   const {
@@ -15,14 +35,21 @@ export function createTabs(config: TabsConfig): TabsInstance {
     transition,
     equalHeight = false,
     equalPanelHeight = false,
-    onChange,
     beforeChange,
     afterChange,
   } = config;
 
   const root = resolveElement(config.el);
+
+  // Prevent double-init: return existing instance or destroy it first
+  const existing = instances.get(root);
+  if (existing)
+  {
+    existing.destroy();
+  }
+
   const section = discoverDOM(root);
-  const { list, tabs, panels } = section;
+  const { list, tabs, panels, tabPanelMap } = section;
 
   // Set variant, orientation, justify, side, transition
   root.setAttribute("data-ut-variant", variant);
@@ -83,12 +110,31 @@ export function createTabs(config: TabsConfig): TabsInstance {
     tabs.findIndex((t) => getTabPath(t) === currentPath)
   );
 
-  // URL hash sync — listen for popstate (back/forward)
+  // URL hash sync — listen for popstate (back/forward) and hashchange
+  let isRestoringHistory = false;
   function handlePopState() {
     const path = getHashPath(root);
-    if (path && path !== currentPath) setPath(path);
+    if (path && path !== currentPath)
+    {
+      isRestoringHistory = true;
+      setPath(path);
+      isRestoringHistory = false;
+    }
   }
-  if (syncUrl) window.addEventListener("popstate", handlePopState);
+  function handleHashChange() {
+    const path = getHashPath(root);
+    if (path && path !== currentPath)
+    {
+      isRestoringHistory = true;
+      setPath(path);
+      isRestoringHistory = false;
+    }
+  }
+  if (syncUrl)
+  {
+    window.addEventListener("popstate", handlePopState);
+    window.addEventListener("hashchange", handleHashChange);
+  }
 
   // Cancel any pending initial-mount RAF on destroy
   let cancelInitialRaf: (() => void) | null = null;
@@ -105,23 +151,39 @@ export function createTabs(config: TabsConfig): TabsInstance {
     const index = tabs.findIndex((t) => getTabPath(t) === path);
     if (index === -1) return;
 
+    // Refuse disabled tabs
+    if (tabs[index].hasAttribute("data-ut-disabled")) return;
+
     // Skip hooks on the initial deferred render (no previous state to transition from)
-    if (!defer) {
-      // beforeChange (and legacy onChange) can return false to cancel the switch
+    if (!defer)
+    {
+      // beforeChange can return false to cancel the switch
       if (beforeChange && beforeChange(path, prevPath) === false) return;
-      if (onChange && onChange(path, prevPath) === false) return;
-      for (const fn of beforeListeners) { if (fn(path, prevPath) === false) return; }
+      for (const fn of beforeListeners)
+      {
+        if (fn(path, prevPath) === false) return;
+      }
     }
 
     currentPath = path;
 
-    const prevIndex = panels.findIndex((p) => !p.hidden);
+    // Find the previously active tab index by checking which panel is visible
+    let prevTabIndex = -1;
+    tabPanelMap.forEach((panel, tabIdx) => {
+      if (!panel.hidden) prevTabIndex = tabIdx;
+    });
 
-    updateAriaSelection(tabs, panels, index);
+    updateAriaSelection(tabs, tabPanelMap, index);
 
     // Transition: animate after updateAriaSelection has activated the new panel
-    if (transition && prevIndex !== -1 && prevIndex !== index) {
-      applyTransition(panels, index, prevIndex, transition);
+    if (transition && prevTabIndex !== -1 && prevTabIndex !== index)
+    {
+      const prevPanel = tabPanelMap.get(prevTabIndex);
+      const nextPanel = tabPanelMap.get(index);
+      if (prevPanel && nextPanel)
+      {
+        applyTransitionPanels(prevPanel, nextPanel, transition);
+      }
     }
 
     if (defer) {
@@ -134,11 +196,19 @@ export function createTabs(config: TabsConfig): TabsInstance {
     // Persist
     if (storage) storage.setItem(storageKey, path);
 
-    // URL sync
-    if (syncUrl) {
+    // URL sync — replaceState on init/popstate, pushState on user action
+    if (syncUrl)
+    {
       const url = new URL(window.location.href);
       url.hash = `ut-${getTabId(root)}-${path}`;
-      history.pushState(null, "", url.toString());
+      if (defer || isRestoringHistory)
+      {
+        history.replaceState(null, "", url.toString());
+      }
+      else
+      {
+        history.pushState(null, "", url.toString());
+      }
     }
 
     if (!defer) {
@@ -152,16 +222,37 @@ export function createTabs(config: TabsConfig): TabsInstance {
   }
 
   function destroy(): void {
+    // Remove from instance tracking
+    instances.delete(root);
+
+    // Remove event listeners
     list.removeEventListener("click", handleClick);
     cleanupKeyboard();
     cleanupResize();
     cleanupOverflow?.();
     cleanupEqualHeight?.();
     cancelInitialRaf?.();
-    if (syncUrl) window.removeEventListener("popstate", handlePopState);
+    if (syncUrl)
+    {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("hashchange", handleHashChange);
+    }
+
+    // Clear listener sets
     listeners.clear();
     beforeListeners.clear();
     afterListeners.clear();
+
+    // Remove attributes set by createTabs
+    root.removeAttribute("data-ut-variant");
+    root.removeAttribute("data-ut-orientation");
+    root.removeAttribute("data-ut-side");
+    root.removeAttribute("data-ut-transition");
+    list.removeAttribute("data-ut-justify");
+
+    // Clean up ARIA and indicator CSS vars
+    cleanupAria(section);
+    cleanupIndicator(list);
   }
 
   function on(event: "beforeChange", handler: TabBeforeChangeHandler): () => void;
@@ -184,19 +275,58 @@ export function createTabs(config: TabsConfig): TabsInstance {
   // Initialize — defer to next frame so the DOM is laid out before measuring
   setPath(initialPath, true);
 
-  return { getPath, setPath, destroy, on, off };
+  const instance: TabsInstance = { getPath, setPath, destroy, on, off };
+  instances.set(root, instance);
+
+  return instance;
 }
 
 function discoverDOM(root: HTMLElement): TabSection {
   const list = root.querySelector<HTMLElement>("[data-ut-list]");
   if (!list) throw new Error("[ultitabs] Missing [data-ut-list] element");
 
-  const tabs = Array.from(list.querySelectorAll<HTMLElement>(":scope > [data-ut-tab]"));
-  const panels = Array.from(root.querySelectorAll<HTMLElement>(":scope > [data-ut-panel]"));
+  const tabs = Array.from(
+    list.querySelectorAll<HTMLElement>(":scope > [data-ut-tab]")
+  );
+  const panels = Array.from(
+    root.querySelectorAll<HTMLElement>(":scope > [data-ut-panel]")
+  );
 
-  if (tabs.length === 0) throw new Error("[ultitabs] No [data-ut-tab] elements found");
+  if (tabs.length === 0)
+  {
+    throw new Error("[ultitabs] No [data-ut-tab] elements found");
+  }
 
-  return { root, list, tabs, panels };
+  // Build tab-to-panel mapping: match by data-ut-tab/data-ut-panel value,
+  // fallback to index when values are missing
+  const tabPanelMap = new Map<number, HTMLElement>();
+  const panelsByValue = new Map<string, HTMLElement>();
+
+  // Index panels by their data-ut-panel value
+  panels.forEach((panel) => {
+    const value = panel.getAttribute("data-ut-panel");
+    if (value)
+    {
+      panelsByValue.set(value, panel);
+    }
+  });
+
+  // Map each tab to its panel
+  tabs.forEach((tab, i) => {
+    const tabValue = tab.getAttribute("data-ut-tab");
+    // Try to match by value first
+    if (tabValue && panelsByValue.has(tabValue))
+    {
+      tabPanelMap.set(i, panelsByValue.get(tabValue)!);
+    }
+    else if (panels[i])
+    {
+      // Fallback to index
+      tabPanelMap.set(i, panels[i]);
+    }
+  });
+
+  return { root, list, tabs, panels, tabPanelMap };
 }
 
 function getTabPath(tab: HTMLElement): TabPath {
@@ -234,7 +364,14 @@ function setupEqualHeight(
   equalHeight: boolean,
   equalPanelHeight: boolean
 ): () => void {
+  let isMeasuring = false;
+  let lastMax = 0;
+
   function measure() {
+    // Prevent ResizeObserver feedback loop
+    if (isMeasuring) return;
+    isMeasuring = true;
+
     // Temporarily show all panels to measure their natural height
     const wasHidden = panels.map((p) => p.hidden);
     panels.forEach((p) => {
@@ -253,15 +390,31 @@ function setupEqualHeight(
       p.hidden = wasHidden[i];
     });
 
+    // Skip if height hasn't changed to avoid unnecessary reflows
+    if (max === lastMax)
+    {
+      isMeasuring = false;
+      return;
+    }
+    lastMax = max;
+
     // equalHeight: set min-height on root to prevent the page from jumping
-    // Also set it on panels — without this the root min-height alone doesn't
-    // prevent the content area from shrinking when a shorter panel is shown
-    if (equalHeight) {
+    // Also set it on panels
+    if (equalHeight)
+    {
       panels.forEach((p) => (p.style.minHeight = `${max}px`));
-      void root.offsetHeight; // reflow after panels are sized
+      void root.offsetHeight;
       root.style.minHeight = `${root.scrollHeight}px`;
     }
-    if (equalPanelHeight) panels.forEach((p) => (p.style.minHeight = `${max}px`));
+    if (equalPanelHeight)
+    {
+      panels.forEach((p) => (p.style.minHeight = `${max}px`));
+    }
+
+    // Use RAF to ensure we're done with this measurement cycle
+    requestAnimationFrame(() => {
+      isMeasuring = false;
+    });
   }
 
   // Measure after first paint so content is rendered
@@ -296,36 +449,73 @@ function setupOverflow(list: HTMLElement, orientation: string): () => void {
   btnEnd.setAttribute("aria-hidden", "true");
   btnStart.setAttribute("tabindex", "-1");
   btnEnd.setAttribute("tabindex", "-1");
-  btnStart.textContent = isVertical ? "▲" : "◀";
-  btnEnd.textContent = isVertical ? "▼" : "▶";
+  btnStart.setAttribute("type", "button");
+  btnEnd.setAttribute("type", "button");
+  // Don't set text content - use CSS for logical arrows
   scroller.insertBefore(btnStart, list);
   scroller.appendChild(btnEnd);
 
   const scrollAmount = 120;
 
-  function onScrollStart() {
-    if (isVertical) list.scrollTop -= scrollAmount;
-    else list.scrollLeft -= scrollAmount;
-    updateButtons();
+  // RTL-aware scroll position helpers
+  function getScrollStart(): number {
+    if (isVertical) return list.scrollTop;
+    // scrollLeft can be negative in RTL in some browsers
+    return Math.abs(list.scrollLeft);
   }
-  function onScrollEnd() {
-    if (isVertical) list.scrollTop += scrollAmount;
-    else list.scrollLeft += scrollAmount;
+
+  function getMaxScroll(): number {
+    if (isVertical)
+    {
+      return list.scrollHeight - list.clientHeight;
+    }
+    return list.scrollWidth - list.clientWidth;
+  }
+
+  function scrollBy(delta: number): void {
+    if (isVertical)
+    {
+      list.scrollTop += delta;
+    }
+    else
+    {
+      // In RTL, scroll direction is reversed in some browsers
+      const isRtl = getComputedStyle(list).direction === "rtl";
+      // scrollLeft behavior varies: some browsers use negative values in RTL
+      // Using scrollBy is more reliable across browsers
+      list.scrollBy({ left: isRtl ? -delta : delta, behavior: "auto" });
+    }
     updateButtons();
   }
 
+  function onScrollStart() {
+    scrollBy(-scrollAmount);
+  }
+
+  function onScrollEnd() {
+    scrollBy(scrollAmount);
+  }
+
   function updateButtons() {
-    const atStart = isVertical ? list.scrollTop <= 0 : list.scrollLeft <= 0;
-    const atEnd = isVertical
-      ? list.scrollTop + list.clientHeight >= list.scrollHeight - 1
-      : list.scrollLeft + list.clientWidth >= list.scrollWidth - 1;
+    const scrollPos = getScrollStart();
+    const maxScroll = getMaxScroll();
+    const atStart = scrollPos <= 1;
+    const atEnd = scrollPos >= maxScroll - 1;
     btnStart.toggleAttribute("data-ut-scroll-hidden", atStart);
     btnEnd.toggleAttribute("data-ut-scroll-hidden", atEnd);
+  }
+
+  // Scroll focused tab into view
+  function handleFocusIn(e: FocusEvent) {
+    const tab = (e.target as HTMLElement).closest<HTMLElement>("[data-ut-tab]");
+    if (!tab) return;
+    tab.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
   btnStart.addEventListener("click", onScrollStart);
   btnEnd.addEventListener("click", onScrollEnd);
   list.addEventListener("scroll", updateButtons, { passive: true });
+  list.addEventListener("focusin", handleFocusIn);
 
   const ro = new ResizeObserver(updateButtons);
   ro.observe(list);
@@ -334,9 +524,11 @@ function setupOverflow(list: HTMLElement, orientation: string): () => void {
   return () => {
     ro.disconnect();
     list.removeEventListener("scroll", updateButtons);
+    list.removeEventListener("focusin", handleFocusIn);
     btnStart.removeEventListener("click", onScrollStart);
     btnEnd.removeEventListener("click", onScrollEnd);
-    if (scroller.parentNode) {
+    if (scroller.parentNode)
+    {
       scroller.parentNode.insertBefore(list, scroller);
       scroller.remove();
     }
@@ -345,15 +537,11 @@ function setupOverflow(list: HTMLElement, orientation: string): () => void {
 
 // ── Panel transitions ────────────────────────────────────────────────────────
 
-function applyTransition(
-  panels: HTMLElement[],
-  nextIndex: number,
-  prevIndex: number,
+function applyTransitionPanels(
+  outgoing: HTMLElement,
+  incoming: HTMLElement,
   transition: string
 ): void {
-  const outgoing = panels[prevIndex];
-  const incoming = panels[nextIndex];
-
   // Show outgoing again temporarily so it can animate out
   outgoing.hidden = false;
   outgoing.setAttribute("data-ut-panel-leaving", "");
@@ -361,8 +549,11 @@ function applyTransition(
 
   // Determine animation duration from CSS variable or fallback
   const style = getComputedStyle(incoming);
-  const durationStr = style.getPropertyValue("--ut-transition-duration").trim() || "200ms";
-  const duration = parseFloat(durationStr) * (durationStr.endsWith("s") && !durationStr.endsWith("ms") ? 1000 : 1);
+  const durationStr =
+    style.getPropertyValue("--ut-transition-duration").trim() || "200ms";
+  const duration =
+    parseFloat(durationStr) *
+    (durationStr.endsWith("s") && !durationStr.endsWith("ms") ? 1000 : 1);
 
   let done = false;
   const finish = () => {

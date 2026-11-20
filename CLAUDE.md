@@ -41,18 +41,25 @@ Always bump `lib/package.json` version, update `lib/CHANGELOG.md`, and sync READ
 - CSS variables: `--ut-indicator-color`, `--ut-tab-color`, `--ut-transition-duration`, etc.
 - CSS classes set by the library: `data-ut-active`, `data-ut-variant`, `data-ut-orientation`
 
-### Current version: `1.3.0`
+### Current version: `2.0.0`
 Features shipped:
 - `variant`: underline / pill / bordered
 - `orientation`: horizontal / vertical + `side`: left / right
 - `justify`: start / center / end / between / around / evenly
-- `syncUrl`: syncs active tab to URL hash
+- `syncUrl`: syncs active tab to URL hash (replaceState on init/popstate, pushState on user click)
 - `persist`: session / local storage
-- `data-ut-disabled`: disable individual tabs
+- `data-ut-disabled`: disable individual tabs (keyboard skips, setPath refuses)
 - `data-ut-auto` + `data-ut-default`: zero-JS auto-init
-- `overflow`: scroll arrows when tabs overflow container
-- `transition`: fade / slide panel animations
-- `onChange` returning `false` cancels tab switch
+- `overflow`: scroll arrows when tabs overflow container (RTL-aware)
+- `transition`: fade / slide panel animations (respects prefers-reduced-motion)
+- `beforeChange` returning `false` cancels tab switch
+- `afterChange` for post-switch callbacks
+- `.on('change')` / `.off('change')` event listeners
+- `equalHeight` / `equalPanelHeight` for uniform panel heights
+- Panel pairing by `data-ut-tab`/`data-ut-panel` value matching (not DOM order)
+- Dark theme via `[data-ut-theme="dark"]` or `prefers-color-scheme: dark`
+- Full RTL support with logical properties
+- Double-init prevention (re-calling createTabs destroys existing instance first)
 
 ### When adding a feature
 1. Update `lib/src/types.ts` first
@@ -122,4 +129,5 @@ Same visual style as Examples — sticky left sidebar listing all doc pages grou
 - The `tsconfig.base.json` warning during build is pre-existing and non-blocking — ignore it
 - Cloudways uses **Hybrid Stack** (not Lightning Stack) — this is required for React Router to work
 - The site's `client/.gitignore` excluded `dist/` — `deploy.sh` uses `git add -f client/dist` to force-include it
-- `onChange` in `TabsConfig` is called BEFORE state changes (for cancellation), then `listeners` (`.on('change')`) are called after commit
+- `beforeChange` in `TabsConfig` is called BEFORE state changes (for cancellation), then `afterChange` and `listeners` (`.on('change')`) are called after commit
+- `onChange` was removed in v2.0.0 — use `beforeChange` instead (same signature)

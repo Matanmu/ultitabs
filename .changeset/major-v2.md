@@ -2,59 +2,36 @@
 "ultitabs": major
 ---
 
-## UltiTabs 2.0.0
+## Breaking changes
 
-### Breaking Changes
+- **`onChange` is gone.** Pass `beforeChange` instead. It receives `(path, prevPath)` and cancels the switch when it returns `false`. Use `afterChange` or `.on("change")` for work that must run after the switch commits.
 
-- **`onChange` removed**: The deprecated `onChange` config option has been removed. Use `beforeChange` instead (same signature, can return `false` to cancel).
+  ```js
+  // 1.x
+  createTabs({ el, onChange: (path, prev) => { /* return false to cancel */ } })
 
-- **Panel pairing by value**: Panels are now paired with tabs by matching `data-ut-tab` and `data-ut-panel` attribute values, not by DOM order. This allows panels to be in any order in the HTML. If values don't match, it falls back to index-based pairing for backwards compatibility with tabs/panels that have no explicit values.
+  // 2.0
+  createTabs({ el, beforeChange: (path, prev) => { /* return false to cancel */ } })
+  ```
 
-- **sideEffects in package.json**: The package now correctly declares `sideEffects` for the auto-init behavior. If you're using a bundler with tree-shaking and importing just types, this may affect your bundle.
+- **`getPath()` is `string | null`.** It is `null` when every tab is disabled or nothing could be selected.
 
-### New Features
+- **Panels pair by value.** A tab's `data-ut-tab` is matched to the panel with the same `data-ut-panel`. DOM order is used only when those values are missing. A value that does not match any panel is not paired by index.
 
-- **Dark theme**: CSS now includes dark mode support via `[data-ut-theme="dark"]` or automatic `prefers-color-scheme: dark` detection.
+- **`sideEffects` is no longer `false`.** Importing `ultitabs` runs auto-init for `[data-ut-section][data-ut-auto]`. Bundlers keep that side effect.
 
-- **Improved disabled tabs**:
-  - Keyboard navigation (Arrow, Home, End) now properly skips disabled tabs
-  - `setPath()` refuses disabled tab paths
-  - Disabled tabs have proper styling (`opacity`, `cursor: not-allowed`)
+## Fixes
 
-- **Better URL sync**:
-  - Uses `replaceState` on init and browser back/forward (not `pushState`)
-  - Listens to `hashchange` in addition to `popstate`
+- `syncUrl` calls `history.replaceState` while initializing and while handling `popstate` / `hashchange`. `pushState` is only for a user or programmatic change.
+- Arrow keys, Home, and End skip disabled tabs. `setPath` refuses a disabled id. Disabled tabs use `aria-disabled`, `tabindex="-1"`, and a dimmed style.
+- The leaving panel is `position: absolute` (the in-flow `position: relative` rule no longer overrides it), so fade and slide do not stack two panels in normal flow. Slide direction follows RTL. `prefers-reduced-motion: reduce` shortens the motion.
+- Vertical pill tabs keep the pill highlight. The vertical line indicator no longer wins the cascade.
+- Overflow arrows use logical chevrons, detect the RTL start edge from the browser's `scrollLeft` model, and scroll the focused tab into view inside the list.
+- `equalHeight` measures panels out of flow and does not observe the root while it is writing `min-height`, so the resize observer does not loop.
+- `destroy()` removes listeners, roles, ARIA, tabindex, `hidden`, indicator variables, the overflow scroller, and equal-height styles. A second `createTabs()` on the same root replaces the previous instance.
 
-- **Transitions respect reduced motion**: `prefers-reduced-motion: reduce` disables animations.
+## CSS
 
-- **RTL improvements**:
-  - Slide transition animates in correct direction for RTL
-  - Overflow scroll detection works correctly in RTL layouts
+Hard-coded border, pill, panel, and focus colors are custom properties (`--ut-border-color`, `--ut-panel-bg`, `--ut-pill-track-bg`, `--ut-pill-active-bg`, `--ut-pill-shadow`, `--ut-focus-ring-color`, `--ut-focus-ring-offset`). The default theme stays light. `data-ut-theme="dark"` or `prefers-color-scheme: dark` selects the dark palette; `data-ut-theme="light"` forces light. The focus ring is inset so a scrolling tab list does not clip it.
 
-- **Full cleanup on destroy()**: All ARIA attributes, CSS variables, and DOM modifications are properly cleaned up.
-
-- **Double-init prevention**: Calling `createTabs()` on an already-initialized element destroys the existing instance first.
-
-- **New type exports**: `Transition`, `TabChangeHandler`, `TabBeforeChangeHandler` are now exported.
-
-### CSS Changes
-
-- All hardcoded colors are now CSS custom properties (tokenized)
-- New CSS variables: `--ut-border-color`, `--ut-panel-bg`, `--ut-pill-track-bg`, `--ut-pill-active-bg`, `--ut-pill-shadow`, `--ut-focus-ring-color`, `--ut-focus-ring-offset`, `--ut-tab-disabled-opacity`
-- Focus ring no longer clips (uses positive `outline-offset`)
-- Vertical + pill variant CSS specificity fixed
-
-### Migration Guide
-
-1. **Replace `onChange` with `beforeChange`**:
-   ```js
-   // Before (v1.x)
-   createTabs({ el, onChange: (path, prev) => { ... } })
-
-   // After (v2.0)
-   createTabs({ el, beforeChange: (path, prev) => { ... } })
-   ```
-
-2. **Panel order**: If your panels rely on DOM order matching tab order, they should still work. But if you have explicit `data-ut-panel` values, make sure they match your `data-ut-tab` values.
-
-3. **CSS customization**: If you were overriding hardcoded colors like `#e5e7eb`, update to use the new CSS variables instead.
+Published JS is minified. `ultitabs/css/ultitabs.min.css` is the minified stylesheet.

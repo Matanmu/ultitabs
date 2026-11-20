@@ -16,10 +16,7 @@ export function updateIndicator(list: HTMLElement, activeTab: HTMLElement): void
   list.style.setProperty("--ut-indicator-height-val", `${tabRect.height}px`);
 }
 
-export function updateIndicatorNextFrame(
-  list: HTMLElement,
-  activeTab: HTMLElement
-): () => void {
+export function updateIndicatorNextFrame(list: HTMLElement, activeTab: HTMLElement): () => void {
   const raf = requestAnimationFrame(() => updateIndicator(list, activeTab));
   return () => cancelAnimationFrame(raf);
 }
@@ -27,12 +24,11 @@ export function updateIndicatorNextFrame(
 export function observeResize(
   list: HTMLElement,
   tabs: HTMLElement[],
-  getActiveIndex: () => number
+  getActiveIndex: () => number,
 ): () => void {
   const ro = new ResizeObserver(() => {
     const idx = getActiveIndex();
-    if (tabs[idx])
-    {
+    if (tabs[idx]) {
       updateIndicator(list, tabs[idx]);
     }
   });

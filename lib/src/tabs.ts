@@ -1,26 +1,26 @@
-import type {
-  TabPath,
-  TabsConfig,
-  TabsInstance,
-  TabSection,
-  TabChangeHandler,
-  TabBeforeChangeHandler,
-} from "./types";
-import { resolveElement } from "./utils";
+import { cleanupAria, setupAria, setupKeyboard, updateAriaSelection } from "./aria";
 import {
-  setupAria,
-  cleanupAria,
-  updateAriaSelection,
-  setupKeyboard,
-} from "./aria";
-import {
+  cleanupIndicator,
+  observeResize,
   updateIndicator,
   updateIndicatorNextFrame,
-  observeResize,
-  cleanupIndicator,
 } from "./indicator";
+import type {
+  TabBeforeChangeHandler,
+  TabChangeHandler,
+  TabPath,
+  TabSection,
+  TabsConfig,
+  TabsInstance,
+} from "./types";
+import {
+  detectRtlScrollType,
+  logicalScrollFromStart,
+  parseDuration,
+  resolveElement,
+  scrollLeftAfterDelta,
+} from "./utils";
 
-// Track instances to prevent double-init
 const instances = new WeakMap<HTMLElement, TabsInstance>();
 
 export function createTabs(config: TabsConfig): TabsInstance {
@@ -41,17 +41,14 @@ export function createTabs(config: TabsConfig): TabsInstance {
 
   const root = resolveElement(config.el);
 
-  // Prevent double-init: return existing instance or destroy it first
+  // A second createTabs() on the same root replaces the previous instance
+  // instead of stacking another set of listeners.
   const existing = instances.get(root);
-  if (existing)
-  {
-    existing.destroy();
-  }
+  if (existing) existing.destroy();
 
   const section = discoverDOM(root);
   const { list, tabs, panels, tabPanelMap } = section;
 
-  // Set variant, orientation, justify, side, transition
   root.setAttribute("data-ut-variant", variant);
   root.setAttribute("data-ut-orientation", orientation);
   root.setAttribute("data-ut-side", side);
@@ -59,131 +56,115 @@ export function createTabs(config: TabsConfig): TabsInstance {
   list.setAttribute("data-ut-justify", justify);
   if (transition) root.setAttribute("data-ut-transition", transition);
 
-  // Overflow scroll — wrap list in a scroller, add arrow buttons
   let cleanupOverflow: (() => void) | null = null;
   if (overflow) cleanupOverflow = setupOverflow(list, orientation);
 
-  // Equal height — measure after first paint
   let cleanupEqualHeight: (() => void) | null = null;
   if (equalHeight || equalPanelHeight) {
     cleanupEqualHeight = setupEqualHeight(root, panels, equalHeight, equalPanelHeight);
   }
 
-  // Setup ARIA — also marks disabled tabs
   setupAria(section);
-  markDisabledTabs(tabs);
+  tabs.forEach((tab) => {
+    if (!tab.hasAttribute("data-ut-disabled")) return;
+    tab.setAttribute("aria-disabled", "true");
+    tab.setAttribute("tabindex", "-1");
+  });
 
-  // State
   let currentPath: TabPath | null = null;
-  const listeners: Set<TabChangeHandler> = new Set();
-  const beforeListeners: Set<TabBeforeChangeHandler> = new Set();
-  const afterListeners: Set<TabChangeHandler> = new Set();
+  const listeners = new Set<TabChangeHandler>();
+  const beforeListeners = new Set<TabBeforeChangeHandler>();
+  const afterListeners = new Set<TabChangeHandler>();
 
-  // Persist storage key — scoped to element id or a generated key
-  const storageKey = `ut-persist-${root.id || root.getAttribute("data-ut-section") || Array.from(document.querySelectorAll("[data-ut-section]")).indexOf(root)}`;
-  const storage = persist === "local" ? localStorage : persist === "session" ? sessionStorage : null;
+  const storageKey = persistKey(root);
+  const storage =
+    persist === "local" ? localStorage : persist === "session" ? sessionStorage : null;
 
-  // Determine initial path — priority: config > URL hash > persisted > data-ut-default > first tab
-  const defaultPath = config.defaultPath ?? root.getAttribute("data-ut-default") ?? undefined;
-  const urlPath = syncUrl ? getHashPath(root) : null;
-  const persistedPath = storage ? storage.getItem(storageKey) : null;
-  const initialPath = defaultPath ?? urlPath ?? persistedPath ?? getTabPath(enabledTabs(tabs)[0] ?? tabs[0]);
+  let cancelInitialRaf: (() => void) | null = null;
+  let activeTransition: (() => void) | null = null;
+  // True while applying a URL that the browser already committed (init, popstate, hashchange).
+  let isRestoringHistory = false;
 
-  // Click handlers
-  function handleClick(e: MouseEvent) {
-    const tab = (e.target as HTMLElement).closest<HTMLElement>("[data-ut-tab]");
+  function isSelectable(path: string | null | undefined): path is string {
+    if (!path) return false;
+    const tab = tabs.find((item) => getTabPath(item) === path);
+    return !!tab && !tab.hasAttribute("data-ut-disabled");
+  }
+
+  function writeUrl(path: TabPath, mode: "push" | "replace") {
+    const url = new URL(window.location.href);
+    url.hash = `ut-${getTabId(root)}-${path}`;
+    const next = url.toString();
+    if (mode === "replace") history.replaceState(null, "", next);
+    else if (window.location.href !== next) history.pushState(null, "", next);
+  }
+
+  function restoreFromUrl() {
+    const path = getHashPath(root);
+    if (!path || path === currentPath) return;
+    isRestoringHistory = true;
+    const before = currentPath;
+    setPath(path);
+    isRestoringHistory = false;
+    // setPath refuses disabled ids. Put the hash back on the tab that stayed active.
+    if (currentPath === before && currentPath && syncUrl) writeUrl(currentPath, "replace");
+  }
+
+  function handleClick(event: MouseEvent) {
+    const tab = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-ut-tab]");
     if (!tab || !tabs.includes(tab)) return;
     if (tab.hasAttribute("data-ut-disabled")) return;
     setPath(getTabPath(tab));
   }
+
   list.addEventListener("click", handleClick);
 
-  // Keyboard — skip disabled tabs
   const cleanupKeyboard = setupKeyboard(list, tabs, orientation, (index) => {
     const tab = tabs[index];
-    if (tab.hasAttribute("data-ut-disabled")) return;
+    if (!tab || tab.hasAttribute("data-ut-disabled")) return;
     setPath(getTabPath(tab));
   });
 
-  // ResizeObserver for indicator
   const cleanupResize = observeResize(list, tabs, () =>
-    tabs.findIndex((t) => getTabPath(t) === currentPath)
+    tabs.findIndex((tab) => getTabPath(tab) === currentPath),
   );
 
-  // URL hash sync — listen for popstate (back/forward) and hashchange
-  let isRestoringHistory = false;
-  function handlePopState() {
-    const path = getHashPath(root);
-    if (path && path !== currentPath)
-    {
-      isRestoringHistory = true;
-      setPath(path);
-      isRestoringHistory = false;
-    }
-  }
-  function handleHashChange() {
-    const path = getHashPath(root);
-    if (path && path !== currentPath)
-    {
-      isRestoringHistory = true;
-      setPath(path);
-      isRestoringHistory = false;
-    }
-  }
-  if (syncUrl)
-  {
-    window.addEventListener("popstate", handlePopState);
-    window.addEventListener("hashchange", handleHashChange);
+  if (syncUrl) {
+    window.addEventListener("popstate", restoreFromUrl);
+    window.addEventListener("hashchange", restoreFromUrl);
   }
 
-  // Cancel any pending initial-mount RAF on destroy
-  let cancelInitialRaf: (() => void) | null = null;
-
-  // API
-  function getPath(): TabPath {
-    return currentPath!;
+  function getPath(): TabPath | null {
+    return currentPath;
   }
 
   function setPath(path: TabPath, defer = false): void {
     const prevPath = currentPath;
     if (path === prevPath) return;
 
-    const index = tabs.findIndex((t) => getTabPath(t) === path);
+    const index = tabs.findIndex((tab) => getTabPath(tab) === path);
     if (index === -1) return;
-
-    // Refuse disabled tabs
     if (tabs[index].hasAttribute("data-ut-disabled")) return;
 
-    // Skip hooks on the initial deferred render (no previous state to transition from)
-    if (!defer)
-    {
-      // beforeChange can return false to cancel the switch
-      if (beforeChange && beforeChange(path, prevPath) === false) return;
-      for (const fn of beforeListeners)
-      {
+    if (!defer) {
+      if (beforeChange?.(path, prevPath) === false) return;
+      for (const fn of beforeListeners) {
         if (fn(path, prevPath) === false) return;
       }
     }
 
     currentPath = path;
 
-    // Find the previously active tab index by checking which panel is visible
-    let prevTabIndex = -1;
-    tabPanelMap.forEach((panel, tabIdx) => {
-      if (!panel.hidden) prevTabIndex = tabIdx;
-    });
+    const prevIndex =
+      prevPath === null ? -1 : tabs.findIndex((tab) => getTabPath(tab) === prevPath);
+    const prevPanel = prevIndex === -1 ? undefined : tabPanelMap.get(prevIndex);
+    const nextPanel = tabPanelMap.get(index);
 
-    updateAriaSelection(tabs, tabPanelMap, index);
+    updateAriaSelection(tabs, tabPanelMap, panels, index);
 
-    // Transition: animate after updateAriaSelection has activated the new panel
-    if (transition && prevTabIndex !== -1 && prevTabIndex !== index)
-    {
-      const prevPanel = tabPanelMap.get(prevTabIndex);
-      const nextPanel = tabPanelMap.get(index);
-      if (prevPanel && nextPanel)
-      {
-        applyTransitionPanels(prevPanel, nextPanel, transition);
-      }
+    if (transition && prevPanel && nextPanel && prevPanel !== nextPanel) {
+      activeTransition?.();
+      activeTransition = applyTransitionPanels(prevPanel, nextPanel, transition);
     }
 
     if (defer) {
@@ -193,64 +174,44 @@ export function createTabs(config: TabsConfig): TabsInstance {
       updateIndicator(list, tabs[index]);
     }
 
-    // Persist
     if (storage) storage.setItem(storageKey, path);
 
-    // URL sync — replaceState on init/popstate, pushState on user action
-    if (syncUrl)
-    {
-      const url = new URL(window.location.href);
-      url.hash = `ut-${getTabId(root)}-${path}`;
-      if (defer || isRestoringHistory)
-      {
-        history.replaceState(null, "", url.toString());
-      }
-      else
-      {
-        history.pushState(null, "", url.toString());
-      }
-    }
+    if (syncUrl) writeUrl(path, defer || isRestoringHistory ? "replace" : "push");
 
     if (!defer) {
-      // Notify change listeners (fired after state is committed)
       listeners.forEach((fn) => fn(path, prevPath));
-
-      // afterChange config callback + afterChange listeners
       afterChange?.(path, prevPath);
       afterListeners.forEach((fn) => fn(path, prevPath));
     }
   }
 
   function destroy(): void {
-    // Remove from instance tracking
     instances.delete(root);
 
-    // Remove event listeners
     list.removeEventListener("click", handleClick);
     cleanupKeyboard();
     cleanupResize();
     cleanupOverflow?.();
     cleanupEqualHeight?.();
     cancelInitialRaf?.();
-    if (syncUrl)
-    {
-      window.removeEventListener("popstate", handlePopState);
-      window.removeEventListener("hashchange", handleHashChange);
+    activeTransition?.();
+    activeTransition = null;
+    if (syncUrl) {
+      window.removeEventListener("popstate", restoreFromUrl);
+      window.removeEventListener("hashchange", restoreFromUrl);
     }
 
-    // Clear listener sets
     listeners.clear();
     beforeListeners.clear();
     afterListeners.clear();
 
-    // Remove attributes set by createTabs
     root.removeAttribute("data-ut-variant");
     root.removeAttribute("data-ut-orientation");
     root.removeAttribute("data-ut-side");
     root.removeAttribute("data-ut-transition");
+    delete root.dataset.utInitialized;
     list.removeAttribute("data-ut-justify");
 
-    // Clean up ARIA and indicator CSS vars
     cleanupAria(section);
     cleanupIndicator(list);
   }
@@ -258,92 +219,112 @@ export function createTabs(config: TabsConfig): TabsInstance {
   function on(event: "beforeChange", handler: TabBeforeChangeHandler): () => void;
   function on(event: "change" | "afterChange", handler: TabChangeHandler): () => void;
   function on(event: string, handler: TabBeforeChangeHandler | TabChangeHandler): () => void {
-    if (event === "beforeChange") { beforeListeners.add(handler as TabBeforeChangeHandler); return () => beforeListeners.delete(handler as TabBeforeChangeHandler); }
-    if (event === "afterChange")  { afterListeners.add(handler as TabChangeHandler);  return () => afterListeners.delete(handler as TabChangeHandler); }
-    listeners.add(handler as TabChangeHandler);
-    return () => listeners.delete(handler as TabChangeHandler);
+    if (event === "beforeChange") {
+      const beforeHandler = handler as TabBeforeChangeHandler;
+      beforeListeners.add(beforeHandler);
+      return () => beforeListeners.delete(beforeHandler);
+    }
+    if (event === "afterChange") {
+      const afterHandler = handler as TabChangeHandler;
+      afterListeners.add(afterHandler);
+      return () => afterListeners.delete(afterHandler);
+    }
+    const changeHandler = handler as TabChangeHandler;
+    listeners.add(changeHandler);
+    return () => listeners.delete(changeHandler);
   }
 
   function off(event: "beforeChange", handler: TabBeforeChangeHandler): void;
   function off(event: "change" | "afterChange", handler: TabChangeHandler): void;
   function off(event: string, handler: TabBeforeChangeHandler | TabChangeHandler): void {
-    if (event === "beforeChange") { beforeListeners.delete(handler as TabBeforeChangeHandler); return; }
-    if (event === "afterChange")  { afterListeners.delete(handler as TabChangeHandler);  return; }
+    if (event === "beforeChange") {
+      beforeListeners.delete(handler as TabBeforeChangeHandler);
+      return;
+    }
+    if (event === "afterChange") {
+      afterListeners.delete(handler as TabChangeHandler);
+      return;
+    }
     listeners.delete(handler as TabChangeHandler);
   }
 
-  // Initialize — defer to next frame so the DOM is laid out before measuring
-  setPath(initialPath, true);
+  // config.defaultPath and data-ut-default, then the URL, then storage, then the first enabled tab.
+  const initialPath = [
+    config.defaultPath ?? root.getAttribute("data-ut-default"),
+    syncUrl ? getHashPath(root) : null,
+    storage ? storage.getItem(storageKey) : null,
+    getTabPath(tabs.find((tab) => !tab.hasAttribute("data-ut-disabled")) ?? tabs[0]),
+  ].find((candidate) => isSelectable(candidate));
+
+  if (initialPath) setPath(initialPath, true);
 
   const instance: TabsInstance = { getPath, setPath, destroy, on, off };
   instances.set(root, instance);
-
   return instance;
 }
 
 function discoverDOM(root: HTMLElement): TabSection {
-  const list = root.querySelector<HTMLElement>("[data-ut-list]");
+  const list = root.querySelector<HTMLElement>(":scope > [data-ut-list]");
   if (!list) throw new Error("[ultitabs] Missing [data-ut-list] element");
 
-  const tabs = Array.from(
-    list.querySelectorAll<HTMLElement>(":scope > [data-ut-tab]")
-  );
-  const panels = Array.from(
-    root.querySelectorAll<HTMLElement>(":scope > [data-ut-panel]")
-  );
+  const tabs = Array.from(list.querySelectorAll<HTMLElement>(":scope > [data-ut-tab]"));
+  const panels = Array.from(root.querySelectorAll<HTMLElement>(":scope > [data-ut-panel]"));
 
-  if (tabs.length === 0)
-  {
-    throw new Error("[ultitabs] No [data-ut-tab] elements found");
-  }
+  if (tabs.length === 0) throw new Error("[ultitabs] No [data-ut-tab] elements found");
 
-  // Build tab-to-panel mapping: match by data-ut-tab/data-ut-panel value,
-  // fallback to index when values are missing
-  const tabPanelMap = new Map<number, HTMLElement>();
+  return { root, list, tabs, panels, tabPanelMap: pairPanels(tabs, panels) };
+}
+
+function pairPanels(tabs: HTMLElement[], panels: HTMLElement[]): Map<number, HTMLElement> {
+  const map = new Map<number, HTMLElement>();
+  const used = new Set<HTMLElement>();
   const panelsByValue = new Map<string, HTMLElement>();
 
-  // Index panels by their data-ut-panel value
   panels.forEach((panel) => {
-    const value = panel.getAttribute("data-ut-panel");
-    if (value)
-    {
-      panelsByValue.set(value, panel);
-    }
+    const value = attributeValue(panel, "data-ut-panel");
+    if (value && !panelsByValue.has(value)) panelsByValue.set(value, panel);
   });
 
-  // Map each tab to its panel
-  tabs.forEach((tab, i) => {
-    const tabValue = tab.getAttribute("data-ut-tab");
-    // Try to match by value first
-    if (tabValue && panelsByValue.has(tabValue))
-    {
-      tabPanelMap.set(i, panelsByValue.get(tabValue)!);
-    }
-    else if (panels[i])
-    {
-      // Fallback to index
-      tabPanelMap.set(i, panels[i]);
-    }
+  tabs.forEach((tab, index) => {
+    const value = attributeValue(tab, "data-ut-tab");
+    if (!value) return;
+    const panel = panelsByValue.get(value);
+    if (!panel || used.has(panel)) return;
+    map.set(index, panel);
+    used.add(panel);
   });
 
-  return { root, list, tabs, panels, tabPanelMap };
-}
-
-function getTabPath(tab: HTMLElement): TabPath {
-  return tab.getAttribute("data-ut-tab") || tab.textContent?.trim() || "";
-}
-
-function enabledTabs(tabs: HTMLElement[]): HTMLElement[] {
-  return tabs.filter((t) => !t.hasAttribute("data-ut-disabled"));
-}
-
-function markDisabledTabs(tabs: HTMLElement[]): void {
-  tabs.forEach((tab) => {
-    if (tab.hasAttribute("data-ut-disabled")) {
-      tab.setAttribute("aria-disabled", "true");
-      tab.setAttribute("tabindex", "-1");
-    }
+  // Index pairing is only for tabs that have no value. A present-but-unmatched
+  // value must not steal another tab's panel.
+  tabs.forEach((tab, index) => {
+    if (map.has(index)) return;
+    if (attributeValue(tab, "data-ut-tab")) return;
+    const panel = panels[index];
+    if (!panel || used.has(panel)) return;
+    map.set(index, panel);
+    used.add(panel);
   });
+
+  return map;
+}
+
+function attributeValue(element: HTMLElement, name: string): string | null {
+  const value = element.getAttribute(name);
+  if (value === null || value.trim() === "") return null;
+  return value;
+}
+
+function getTabPath(tab: HTMLElement | undefined): TabPath {
+  if (!tab) return "";
+  return attributeValue(tab, "data-ut-tab") || tab.textContent?.trim() || "";
+}
+
+function persistKey(root: HTMLElement): string {
+  if (root.id) return `ut-persist-${root.id}`;
+  const section = root.getAttribute("data-ut-section");
+  if (section) return `ut-persist-${section}`;
+  const index = Array.from(document.querySelectorAll("[data-ut-section]")).indexOf(root);
+  return `ut-persist-${index}`;
 }
 
 function getTabId(root: HTMLElement): string {
@@ -352,7 +333,14 @@ function getTabId(root: HTMLElement): string {
 
 function getHashPath(root: HTMLElement): TabPath | null {
   const prefix = `ut-${getTabId(root)}-`;
-  const hash = window.location.hash.slice(1);
+  const raw = window.location.hash.replace(/^#/, "");
+  if (!raw) return null;
+  let hash = raw;
+  try {
+    hash = decodeURIComponent(raw);
+  } catch {
+    hash = raw;
+  }
   return hash.startsWith(prefix) ? hash.slice(prefix.length) : null;
 }
 
@@ -362,173 +350,199 @@ function setupEqualHeight(
   root: HTMLElement,
   panels: HTMLElement[],
   equalHeight: boolean,
-  equalPanelHeight: boolean
+  equalPanelHeight: boolean,
 ): () => void {
-  let isMeasuring = false;
-  let lastMax = 0;
+  let measuring = false;
+  let lastMax = -1;
+  let measureFrame = 0;
+  let observeFrame = 0;
 
   function measure() {
-    // Prevent ResizeObserver feedback loop
-    if (isMeasuring) return;
-    isMeasuring = true;
+    if (measuring) return;
+    measuring = true;
+    observer.unobserve(root);
 
-    // Temporarily show all panels to measure their natural height
-    const wasHidden = panels.map((p) => p.hidden);
-    panels.forEach((p) => {
-      p.hidden = false;
-      p.style.minHeight = "";
-    });
-    root.style.minHeight = "";
+    const width = panelWidth(root, panels);
+    const max = Math.max(0, ...panels.map((panel) => naturalHeight(panel, width)));
 
-    // Force reflow so scrollHeight reflects actual content
-    void root.offsetHeight;
-
-    const max = Math.max(...panels.map((p) => p.scrollHeight));
-
-    // Restore hidden state
-    panels.forEach((p, i) => {
-      p.hidden = wasHidden[i];
-    });
-
-    // Skip if height hasn't changed to avoid unnecessary reflows
-    if (max === lastMax)
-    {
-      isMeasuring = false;
-      return;
-    }
-    lastMax = max;
-
-    // equalHeight: set min-height on root to prevent the page from jumping
-    // Also set it on panels
-    if (equalHeight)
-    {
-      panels.forEach((p) => (p.style.minHeight = `${max}px`));
-      void root.offsetHeight;
-      root.style.minHeight = `${root.scrollHeight}px`;
-    }
-    if (equalPanelHeight)
-    {
-      panels.forEach((p) => (p.style.minHeight = `${max}px`));
+    if (max !== lastMax) {
+      lastMax = max;
+      if (equalHeight || equalPanelHeight) {
+        panels.forEach((panel) => {
+          panel.style.minHeight = `${max}px`;
+        });
+      }
+      if (equalHeight) root.style.minHeight = `${root.scrollHeight}px`;
     }
 
-    // Use RAF to ensure we're done with this measurement cycle
-    requestAnimationFrame(() => {
-      isMeasuring = false;
-    });
+    measuring = false;
+    // Re-observe on the next frame so the writes above are not delivered as a new entry.
+    observeFrame = requestAnimationFrame(() => observer.observe(root));
   }
 
-  // Measure after first paint so content is rendered
-  const raf = requestAnimationFrame(measure);
-
-  // Re-measure when content size changes
-  const ro = new ResizeObserver(measure);
-  ro.observe(root);
+  const observer = new ResizeObserver(() => measure());
+  measureFrame = requestAnimationFrame(measure);
 
   return () => {
-    cancelAnimationFrame(raf);
-    ro.disconnect();
+    cancelAnimationFrame(measureFrame);
+    cancelAnimationFrame(observeFrame);
+    observer.disconnect();
     root.style.minHeight = "";
-    panels.forEach((p) => (p.style.minHeight = ""));
+    panels.forEach((panel) => {
+      panel.style.minHeight = "";
+    });
   };
+}
+
+function panelWidth(root: HTMLElement, panels: HTMLElement[]): number {
+  const visible = panels.find((panel) => !panel.hidden);
+  const width = visible?.getBoundingClientRect().width || root.clientWidth;
+  return width || root.getBoundingClientRect().width;
+}
+
+function naturalHeight(panel: HTMLElement, width: number): number {
+  const previous = {
+    hidden: panel.hidden,
+    minHeight: panel.style.minHeight,
+    position: panel.style.position,
+    visibility: panel.style.visibility,
+    width: panel.style.width,
+    left: panel.style.left,
+    top: panel.style.top,
+  };
+
+  panel.hidden = false;
+  panel.style.minHeight = "0";
+  panel.style.position = "absolute";
+  panel.style.visibility = "hidden";
+  panel.style.left = "0";
+  panel.style.top = "0";
+  if (width) panel.style.width = `${width}px`;
+  const height = panel.scrollHeight;
+
+  panel.hidden = previous.hidden;
+  panel.style.minHeight = previous.minHeight;
+  panel.style.position = previous.position;
+  panel.style.visibility = previous.visibility;
+  panel.style.width = previous.width;
+  panel.style.left = previous.left;
+  panel.style.top = previous.top;
+  return height;
 }
 
 // ── Overflow scroll ──────────────────────────────────────────────────────────
 
 function setupOverflow(list: HTMLElement, orientation: string): () => void {
   const isVertical = orientation === "vertical";
+  const parent = list.parentNode;
+  if (!parent) return () => {};
+
   const scroller = document.createElement("div");
   scroller.setAttribute("data-ut-scroller", "");
-  list.parentNode!.insertBefore(scroller, list);
+  parent.insertBefore(scroller, list);
   scroller.appendChild(list);
 
   const btnStart = document.createElement("button");
   const btnEnd = document.createElement("button");
-  btnStart.setAttribute("data-ut-scroll-btn", "start");
-  btnEnd.setAttribute("data-ut-scroll-btn", "end");
-  btnStart.setAttribute("aria-hidden", "true");
-  btnEnd.setAttribute("aria-hidden", "true");
-  btnStart.setAttribute("tabindex", "-1");
-  btnEnd.setAttribute("tabindex", "-1");
-  btnStart.setAttribute("type", "button");
-  btnEnd.setAttribute("type", "button");
-  // Don't set text content - use CSS for logical arrows
+  for (const [button, edge] of [
+    [btnStart, "start"],
+    [btnEnd, "end"],
+  ] as const) {
+    button.setAttribute("data-ut-scroll-btn", edge);
+    button.setAttribute("type", "button");
+    button.setAttribute("aria-hidden", "true");
+    button.tabIndex = -1;
+  }
   scroller.insertBefore(btnStart, list);
   scroller.appendChild(btnEnd);
 
   const scrollAmount = 120;
 
-  // RTL-aware scroll position helpers
-  function getScrollStart(): number {
+  function isRtl(): boolean {
+    return !isVertical && getComputedStyle(list).direction === "rtl";
+  }
+
+  function maxScroll(): number {
+    return isVertical ? list.scrollHeight - list.clientHeight : list.scrollWidth - list.clientWidth;
+  }
+
+  function logicalPosition(): number {
     if (isVertical) return list.scrollTop;
-    // scrollLeft can be negative in RTL in some browsers
-    return Math.abs(list.scrollLeft);
+    if (!isRtl()) return list.scrollLeft;
+    return logicalScrollFromStart(list.scrollLeft, Math.max(0, maxScroll()), detectRtlScrollType());
   }
 
-  function getMaxScroll(): number {
-    if (isVertical)
-    {
-      return list.scrollHeight - list.clientHeight;
-    }
-    return list.scrollWidth - list.clientWidth;
-  }
-
-  function scrollBy(delta: number): void {
-    if (isVertical)
-    {
-      list.scrollTop += delta;
-    }
-    else
-    {
-      // In RTL, scroll direction is reversed in some browsers
-      const isRtl = getComputedStyle(list).direction === "rtl";
-      // scrollLeft behavior varies: some browsers use negative values in RTL
-      // Using scrollBy is more reliable across browsers
-      list.scrollBy({ left: isRtl ? -delta : delta, behavior: "auto" });
+  function scrollToward(towardEnd: number) {
+    if (isVertical) {
+      list.scrollTop += towardEnd;
+    } else if (!isRtl()) {
+      list.scrollLeft += towardEnd;
+    } else {
+      list.scrollLeft = scrollLeftAfterDelta(list.scrollLeft, towardEnd, detectRtlScrollType());
     }
     updateButtons();
   }
 
+  function updateButtons() {
+    const max = Math.max(0, maxScroll());
+    const position = logicalPosition();
+    btnStart.toggleAttribute("data-ut-scroll-hidden", position <= 1);
+    btnEnd.toggleAttribute("data-ut-scroll-hidden", max <= 1 || position >= max - 1);
+  }
+
+  function scrollTabIntoView(tab: HTMLElement) {
+    const listRect = list.getBoundingClientRect();
+    const tabRect = tab.getBoundingClientRect();
+
+    if (isVertical) {
+      if (tabRect.top < listRect.top) list.scrollTop -= listRect.top - tabRect.top;
+      else if (tabRect.bottom > listRect.bottom) list.scrollTop += tabRect.bottom - listRect.bottom;
+      updateButtons();
+      return;
+    }
+
+    const rtl = isRtl();
+    let towardEnd = 0;
+    if (tabRect.left < listRect.left - 0.5) {
+      const overflowPx = listRect.left - tabRect.left;
+      towardEnd = rtl ? overflowPx : -overflowPx;
+    } else if (tabRect.right > listRect.right + 0.5) {
+      const overflowPx = tabRect.right - listRect.right;
+      towardEnd = rtl ? -overflowPx : overflowPx;
+    }
+    if (towardEnd !== 0) scrollToward(towardEnd);
+  }
+
   function onScrollStart() {
-    scrollBy(-scrollAmount);
+    scrollToward(-scrollAmount);
   }
 
   function onScrollEnd() {
-    scrollBy(scrollAmount);
+    scrollToward(scrollAmount);
   }
 
-  function updateButtons() {
-    const scrollPos = getScrollStart();
-    const maxScroll = getMaxScroll();
-    const atStart = scrollPos <= 1;
-    const atEnd = scrollPos >= maxScroll - 1;
-    btnStart.toggleAttribute("data-ut-scroll-hidden", atStart);
-    btnEnd.toggleAttribute("data-ut-scroll-hidden", atEnd);
-  }
-
-  // Scroll focused tab into view
-  function handleFocusIn(e: FocusEvent) {
-    const tab = (e.target as HTMLElement).closest<HTMLElement>("[data-ut-tab]");
-    if (!tab) return;
-    tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+  function onFocusIn(event: FocusEvent) {
+    const tab = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-ut-tab]");
+    if (!tab || !list.contains(tab)) return;
+    scrollTabIntoView(tab);
   }
 
   btnStart.addEventListener("click", onScrollStart);
   btnEnd.addEventListener("click", onScrollEnd);
   list.addEventListener("scroll", updateButtons, { passive: true });
-  list.addEventListener("focusin", handleFocusIn);
+  list.addEventListener("focusin", onFocusIn);
 
-  const ro = new ResizeObserver(updateButtons);
-  ro.observe(list);
+  const observer = new ResizeObserver(updateButtons);
+  observer.observe(list);
   updateButtons();
 
   return () => {
-    ro.disconnect();
+    observer.disconnect();
     list.removeEventListener("scroll", updateButtons);
-    list.removeEventListener("focusin", handleFocusIn);
+    list.removeEventListener("focusin", onFocusIn);
     btnStart.removeEventListener("click", onScrollStart);
     btnEnd.removeEventListener("click", onScrollEnd);
-    if (scroller.parentNode)
-    {
+    if (scroller.parentNode) {
       scroller.parentNode.insertBefore(list, scroller);
       scroller.remove();
     }
@@ -540,30 +554,40 @@ function setupOverflow(list: HTMLElement, orientation: string): () => void {
 function applyTransitionPanels(
   outgoing: HTMLElement,
   incoming: HTMLElement,
-  transition: string
-): void {
-  // Show outgoing again temporarily so it can animate out
-  outgoing.hidden = false;
-  outgoing.setAttribute("data-ut-panel-leaving", "");
-  incoming.setAttribute("data-ut-panel-entering", transition);
+  transition: string,
+): () => void {
+  const top = incoming.offsetTop;
+  const left = incoming.offsetLeft;
+  const width = incoming.offsetWidth;
 
-  // Determine animation duration from CSS variable or fallback
-  const style = getComputedStyle(incoming);
-  const durationStr =
-    style.getPropertyValue("--ut-transition-duration").trim() || "200ms";
-  const duration =
-    parseFloat(durationStr) *
-    (durationStr.endsWith("s") && !durationStr.endsWith("ms") ? 1000 : 1);
+  outgoing.hidden = false;
+  outgoing.setAttribute("data-ut-panel-leaving", transition);
+  incoming.setAttribute("data-ut-panel-entering", transition);
+  outgoing.style.top = `${top}px`;
+  outgoing.style.left = `${left}px`;
+  outgoing.style.width = `${width}px`;
+
+  const duration = parseDuration(
+    getComputedStyle(incoming).getPropertyValue("--ut-transition-duration"),
+  );
 
   let done = false;
+  let timer = 0;
+
   const finish = () => {
     if (done) return;
     done = true;
+    window.clearTimeout(timer);
+    incoming.removeEventListener("animationend", finish);
     outgoing.hidden = true;
     outgoing.removeAttribute("data-ut-panel-leaving");
     incoming.removeAttribute("data-ut-panel-entering");
+    outgoing.style.top = "";
+    outgoing.style.left = "";
+    outgoing.style.width = "";
   };
 
-  incoming.addEventListener("animationend", finish, { once: true });
-  setTimeout(finish, duration + 50);
+  timer = window.setTimeout(finish, duration + 50);
+  incoming.addEventListener("animationend", finish);
+  return finish;
 }

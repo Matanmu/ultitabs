@@ -24,8 +24,20 @@ export function setupAria(section: TabSection): void {
   });
 }
 
+function clearPanel(panel: HTMLElement): void {
+  panel.removeAttribute("role");
+  panel.removeAttribute("aria-labelledby");
+  panel.removeAttribute("tabindex");
+  panel.removeAttribute("data-ut-panel-leaving");
+  panel.removeAttribute("data-ut-panel-entering");
+  panel.style.top = "";
+  panel.style.left = "";
+  panel.style.width = "";
+  panel.hidden = false;
+}
+
 export function cleanupAria(section: TabSection): void {
-  const { list, tabs, tabPanelMap } = section;
+  const { list, tabs, panels, tabPanelMap } = section;
 
   list.removeAttribute("role");
   list.removeAttribute("aria-orientation");
@@ -39,33 +51,39 @@ export function cleanupAria(section: TabSection): void {
     tab.removeAttribute("data-ut-active");
   });
 
+  const seen = new Set<HTMLElement>();
+  panels.forEach((panel) => {
+    seen.add(panel);
+    clearPanel(panel);
+  });
   tabPanelMap.forEach((panel) => {
-    panel.removeAttribute("role");
-    panel.removeAttribute("aria-labelledby");
-    panel.removeAttribute("tabindex");
-    panel.hidden = false;
+    if (seen.has(panel)) return;
+    clearPanel(panel);
   });
 }
 
 export function updateAriaSelection(
   tabs: HTMLElement[],
   tabPanelMap: Map<number, HTMLElement>,
-  activeIndex: number
+  panels: HTMLElement[],
+  activeIndex: number,
 ): void {
   tabs.forEach((tab, i) => {
     const isActive = i === activeIndex;
     const isDisabled = tab.hasAttribute("data-ut-disabled");
     tab.setAttribute("aria-selected", String(isActive));
-    // Disabled tabs always have tabindex=-1
+    if (isDisabled) tab.setAttribute("aria-disabled", "true");
+    else tab.removeAttribute("aria-disabled");
+    // Disabled tabs stay out of the tab sequence, including if one was active.
     tab.setAttribute("tabindex", isActive && !isDisabled ? "0" : "-1");
     if (isActive) tab.setAttribute("data-ut-active", "");
     else tab.removeAttribute("data-ut-active");
   });
 
-  // Update panel visibility using the tab-to-panel mapping
-  tabPanelMap.forEach((panel, tabIndex) => {
-    const isActive = tabIndex === activeIndex;
-    panel.hidden = !isActive;
+  const activePanel = tabPanelMap.get(activeIndex) ?? null;
+  const allPanels = new Set<HTMLElement>([...panels, ...tabPanelMap.values()]);
+  allPanels.forEach((panel) => {
+    panel.hidden = panel !== activePanel;
     panel.setAttribute("tabindex", "0");
   });
 }
@@ -74,62 +92,55 @@ export function setupKeyboard(
   list: HTMLElement,
   tabs: HTMLElement[],
   orientation: Orientation,
-  onSelect: (index: number) => void
+  onSelect: (index: number) => void,
 ): () => void {
   const isHorizontal = orientation === "horizontal";
 
-  // Find next enabled tab in a direction, wrapping around
-  function findNextEnabled(start: number, direction: 1 | -1): number | null {
+  function isEnabled(index: number): boolean {
+    return !tabs[index].hasAttribute("data-ut-disabled");
+  }
+
+  function findEnabled(start: number, direction: 1 | -1): number | null {
     const len = tabs.length;
-    for (let i = 1; i <= len; i++)
-    {
-      const idx = (start + direction * i + len) % len;
-      if (!tabs[idx].hasAttribute("data-ut-disabled"))
-      {
-        return idx;
+    for (let step = 1; step <= len; step += 1) {
+      const index = (start + direction * step + len) % len;
+      if (isEnabled(index)) return index;
+    }
+    return null;
+  }
+
+  function findEdge(fromEnd: boolean): number | null {
+    if (fromEnd) {
+      for (let i = tabs.length - 1; i >= 0; i -= 1) {
+        if (isEnabled(i)) return i;
       }
+      return null;
+    }
+    for (let i = 0; i < tabs.length; i += 1) {
+      if (isEnabled(i)) return i;
     }
     return null;
   }
 
-  function findFirstEnabled(): number | null {
-    for (let i = 0; i < tabs.length; i++)
-    {
-      if (!tabs[i].hasAttribute("data-ut-disabled")) return i;
-    }
-    return null;
-  }
-
-  function findLastEnabled(): number | null {
-    for (let i = tabs.length - 1; i >= 0; i--)
-    {
-      if (!tabs[i].hasAttribute("data-ut-disabled")) return i;
-    }
-    return null;
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    const currentIndex = tabs.findIndex((t) => t === document.activeElement);
+  function handleKeydown(event: KeyboardEvent) {
+    const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
     if (currentIndex === -1) return;
 
-    // Detect RTL at event time so it reflects current DOM state
     const isRtl = isHorizontal && getComputedStyle(list).direction === "rtl";
-
     let nextIndex: number | null = null;
 
-    switch (e.key)
-    {
+    switch (event.key) {
       case isHorizontal ? (isRtl ? "ArrowLeft" : "ArrowRight") : "ArrowDown":
-        nextIndex = findNextEnabled(currentIndex, 1);
+        nextIndex = findEnabled(currentIndex, 1);
         break;
       case isHorizontal ? (isRtl ? "ArrowRight" : "ArrowLeft") : "ArrowUp":
-        nextIndex = findNextEnabled(currentIndex, -1);
+        nextIndex = findEnabled(currentIndex, -1);
         break;
       case "Home":
-        nextIndex = findFirstEnabled();
+        nextIndex = findEdge(false);
         break;
       case "End":
-        nextIndex = findLastEnabled();
+        nextIndex = findEdge(true);
         break;
       default:
         return;
@@ -137,7 +148,7 @@ export function setupKeyboard(
 
     if (nextIndex === null) return;
 
-    e.preventDefault();
+    event.preventDefault();
     tabs[nextIndex].focus();
     onSelect(nextIndex);
   }

@@ -22,6 +22,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Format
+        run: pnpm --filter ultitabs format:check
+
       - name: Lint
         run: pnpm --filter ultitabs lint
 

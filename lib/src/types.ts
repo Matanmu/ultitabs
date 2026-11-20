@@ -29,13 +29,14 @@ export interface TabsConfig {
   equalHeight?: boolean;
   equalPanelHeight?: boolean;
   /** Called before state change. Return false to cancel the switch. */
-  beforeChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
+  beforeChange?: TabBeforeChangeHandler;
   /** Called after state change and all listeners have been notified. */
-  afterChange?: (path: TabPath, prevPath: TabPath | null) => void;
+  afterChange?: TabChangeHandler;
 }
 
 export interface TabsInstance {
-  getPath(): TabPath;
+  /** Active tab, or `null` when every tab is disabled or none could be selected. */
+  getPath(): TabPath | null;
   setPath(path: TabPath): void;
   destroy(): void;
   /** Subscribe to a hook. Returns an unsubscribe function. */
@@ -51,6 +52,6 @@ export interface TabSection {
   list: HTMLElement;
   tabs: HTMLElement[];
   panels: HTMLElement[];
-  /** Maps tab index to its paired panel (matched by value or fallback to index) */
+  /** Maps tab index to its paired panel (matched by value, or by index when values are missing). */
   tabPanelMap: Map<number, HTMLElement>;
 }

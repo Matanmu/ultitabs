@@ -1,4 +1,6 @@
-/* ultitabs — default styles */
+/* ultitabs — default (light) theme. Dark tokens are opt-in via
+   [data-ut-theme="dark"] or prefers-color-scheme, and [data-ut-theme="light"]
+   forces the palette below. */
 
 [data-ut-section] {
   /* Indicator */
@@ -11,20 +13,20 @@
   /* Tab text */
   --ut-tab-color: #6b7280;
   --ut-tab-active-color: #111827;
-  --ut-tab-disabled-opacity: 0.5;
+  --ut-tab-disabled-opacity: 0.45;
   --ut-tab-gap: 0;
   --ut-tab-padding: 0.625rem 1rem;
   --ut-tab-font-size: 0.875rem;
   --ut-tab-font-weight: 500;
 
-  /* Borders & backgrounds */
+  /* Surfaces */
   --ut-border-color: #e5e7eb;
   --ut-panel-bg: #fff;
   --ut-pill-track-bg: #f3f4f6;
   --ut-pill-active-bg: #fff;
-  --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --ut-pill-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 1px 3px rgba(17, 24, 39, 0.06);
 
-  /* Focus ring */
+  /* Focus ring is drawn inside the tab so overflow clipping cannot eat it. */
   --ut-focus-ring-color: var(--ut-indicator-color);
   --ut-focus-ring-offset: 2px;
 
@@ -32,8 +34,19 @@
   --ut-transition-duration: 200ms;
 }
 
-/* ── Dark theme ── */
-[data-ut-theme="dark"],
+[data-ut-theme="dark"] [data-ut-section],
+[data-ut-section][data-ut-theme="dark"] {
+  --ut-indicator-color: #60a5fa;
+  --ut-tab-color: #9ca3af;
+  --ut-tab-active-color: #f9fafb;
+  --ut-border-color: #374151;
+  --ut-panel-bg: #1f2937;
+  --ut-pill-track-bg: #111827;
+  --ut-pill-active-bg: #374151;
+  --ut-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --ut-focus-ring-color: #93c5fd;
+}
+
 @media (prefers-color-scheme: dark) {
   [data-ut-section]:not([data-ut-theme="light"]) {
     --ut-indicator-color: #60a5fa;
@@ -41,24 +54,37 @@
     --ut-tab-active-color: #f9fafb;
     --ut-border-color: #374151;
     --ut-panel-bg: #1f2937;
-    --ut-pill-track-bg: #374151;
-    --ut-pill-active-bg: #4b5563;
-    --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-    --ut-focus-ring-color: #60a5fa;
+    --ut-pill-track-bg: #111827;
+    --ut-pill-active-bg: #374151;
+    --ut-pill-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --ut-focus-ring-color: #93c5fd;
+  }
+
+  /* An ancestor opted out of the OS dark theme. */
+  [data-ut-theme="light"] [data-ut-section] {
+    --ut-indicator-color: #3b82f6;
+    --ut-tab-color: #6b7280;
+    --ut-tab-active-color: #111827;
+    --ut-border-color: #e5e7eb;
+    --ut-panel-bg: #fff;
+    --ut-pill-track-bg: #f3f4f6;
+    --ut-pill-active-bg: #fff;
+    --ut-pill-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 1px 3px rgba(17, 24, 39, 0.06);
+    --ut-focus-ring-color: #3b82f6;
   }
 }
 
-/* Explicit dark theme override */
-[data-ut-theme="dark"] {
-  --ut-indicator-color: #60a5fa;
-  --ut-tab-color: #9ca3af;
-  --ut-tab-active-color: #f9fafb;
-  --ut-border-color: #374151;
-  --ut-panel-bg: #1f2937;
-  --ut-pill-track-bg: #374151;
-  --ut-pill-active-bg: #4b5563;
-  --ut-pill-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  --ut-focus-ring-color: #60a5fa;
+/* A section that explicitly asks for light wins over an ancestor dark theme. */
+[data-ut-section][data-ut-theme="light"] {
+  --ut-indicator-color: #3b82f6;
+  --ut-tab-color: #6b7280;
+  --ut-tab-active-color: #111827;
+  --ut-border-color: #e5e7eb;
+  --ut-panel-bg: #fff;
+  --ut-pill-track-bg: #f3f4f6;
+  --ut-pill-active-bg: #fff;
+  --ut-pill-shadow: 0 1px 2px rgba(17, 24, 39, 0.08), 0 1px 3px rgba(17, 24, 39, 0.06);
+  --ut-focus-ring-color: #3b82f6;
 }
 
 /* Tab list */
@@ -72,12 +98,24 @@
 }
 
 /* Justify content */
-[data-ut-justify="start"]   { justify-content: flex-start; }
-[data-ut-justify="center"]  { justify-content: center; }
-[data-ut-justify="end"]     { justify-content: flex-end; }
-[data-ut-justify="between"] { justify-content: space-between; }
-[data-ut-justify="around"]  { justify-content: space-around; }
-[data-ut-justify="evenly"]  { justify-content: space-evenly; }
+[data-ut-justify="start"] {
+  justify-content: flex-start;
+}
+[data-ut-justify="center"] {
+  justify-content: center;
+}
+[data-ut-justify="end"] {
+  justify-content: flex-end;
+}
+[data-ut-justify="between"] {
+  justify-content: space-between;
+}
+[data-ut-justify="around"] {
+  justify-content: space-around;
+}
+[data-ut-justify="evenly"] {
+  justify-content: space-evenly;
+}
 
 /* Indicator pseudo-element — base */
 [data-ut-list]::after {
@@ -109,7 +147,7 @@
 
 [data-ut-tab]:focus-visible {
   outline: 2px solid var(--ut-focus-ring-color);
-  outline-offset: var(--ut-focus-ring-offset);
+  outline-offset: calc(var(--ut-focus-ring-offset) * -1);
   border-radius: 4px;
   z-index: 2;
 }
@@ -118,11 +156,9 @@
   color: var(--ut-tab-active-color);
 }
 
-/* Disabled tabs */
 [data-ut-tab][data-ut-disabled] {
   opacity: var(--ut-tab-disabled-opacity);
   cursor: not-allowed;
-  pointer-events: none;
 }
 
 /* Panel */
@@ -215,7 +251,7 @@
   background: var(--ut-panel-bg);
 }
 
-/* ── Orientation: vertical ── (must come AFTER variant rules to win cascade) */
+/* ── Orientation: vertical ── */
 [data-ut-orientation="vertical"] {
   display: flex;
   align-items: stretch;
@@ -235,7 +271,7 @@
   min-width: 0;
 }
 
-/* Vertical indicator — side="left": indicator on inline-end edge of list */
+/* Vertical line indicator. Specificity stays below the vertical+pill rules. */
 [data-ut-orientation="vertical"][data-ut-side="left"] [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
@@ -246,7 +282,6 @@
   transition-property: inset-block-start, height;
 }
 
-/* Vertical indicator — side="right": indicator on inline-start edge of list */
 [data-ut-orientation="vertical"][data-ut-side="right"] [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
@@ -257,7 +292,6 @@
   transition-property: inset-block-start, height;
 }
 
-/* Vertical underline/bordered — side border instead of bottom border */
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="underline"] [data-ut-list],
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-list] {
   border-block-end: none;
@@ -270,22 +304,25 @@
   border-inline-start: 1px solid var(--ut-border-color);
 }
 
-/* ── Vertical + pill — reset horizontal pill styles and apply vertical ── */
-[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-list] {
-  border-radius: 12px;
-  padding: 4px;
-}
-
-[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-list]::after {
-  /* Vertical pill indicator uses block-start/height like other vertical */
+/* Vertical + pill. Four attributes so this beats the side-specific line indicator. */
+[data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="left"] [data-ut-list]::after,
+[data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="right"]
+  [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
   inset-inline-start: var(--ut-indicator-left, 0);
   inset-inline-end: auto;
   width: var(--ut-indicator-width, 0);
   height: var(--ut-indicator-height-val, 0);
+  background: var(--ut-pill-active-bg);
   border-radius: 8px;
+  box-shadow: var(--ut-pill-shadow);
   transition-property: inset-block-start, inset-inline-start, width, height;
+}
+
+[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-list] {
+  border-radius: 12px;
+  padding: 4px;
 }
 
 [data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-tab] {
@@ -298,7 +335,6 @@
   position: relative;
   display: flex;
   align-items: stretch;
-  overflow: hidden;
 }
 
 [data-ut-scroller] [data-ut-list] {
@@ -324,27 +360,44 @@
   background: none;
   cursor: pointer;
   color: var(--ut-tab-color);
-  font-size: 0.625rem;
   padding: 0;
   transition: color 150ms ease, opacity 150ms ease;
 }
 
-/* Logical arrow glyphs via CSS pseudo-elements */
+/* Chevron drawn with borders so it can point along the inline axis, not a physical glyph. */
+[data-ut-scroll-btn]::before {
+  content: "";
+  width: 0.4em;
+  height: 0.4em;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  display: block;
+}
+
 [data-ut-scroll-btn="start"]::before {
-  content: "\2039"; /* Single left-pointing angle quotation mark */
+  transform: rotate(135deg);
 }
 
 [data-ut-scroll-btn="end"]::before {
-  content: "\203A"; /* Single right-pointing angle quotation mark */
+  transform: rotate(-45deg);
 }
 
-/* Vertical scroll buttons use up/down arrows */
+:dir(rtl) [data-ut-scroll-btn="start"]::before,
+[dir="rtl"] [data-ut-scroll-btn="start"]::before {
+  transform: rotate(-45deg);
+}
+
+:dir(rtl) [data-ut-scroll-btn="end"]::before,
+[dir="rtl"] [data-ut-scroll-btn="end"]::before {
+  transform: rotate(135deg);
+}
+
 [data-ut-orientation="vertical"] [data-ut-scroll-btn="start"]::before {
-  content: "\2303"; /* Up arrowhead */
+  transform: rotate(-135deg);
 }
 
 [data-ut-orientation="vertical"] [data-ut-scroll-btn="end"]::before {
-  content: "\2304"; /* Down arrowhead */
+  transform: rotate(45deg);
 }
 
 [data-ut-scroll-btn]:hover {
@@ -356,7 +409,6 @@
   pointer-events: none;
 }
 
-/* Vertical overflow */
 [data-ut-orientation="vertical"] [data-ut-scroller] {
   flex-direction: column;
 }
@@ -366,36 +418,42 @@
   overflow-y: auto;
 }
 
-/* ── Panel transitions ── */
+/* ── Panel transitions ──
+   In-flow panels are position:relative. The leaving panel must win that
+   cascade (higher specificity, no !important) and is taken out of flow so
+   the incoming panel does not stack under it and shift the page.
+   JS pins the leaving panel to the incoming panel's box. */
 
-/* Wrapper for transitions needs to establish stacking context */
 [data-ut-transition] {
   position: relative;
 }
 
-/* Entering panel animation */
+[data-ut-transition] > [data-ut-panel]:not([data-ut-panel-leaving]) {
+  position: relative;
+  z-index: 1;
+}
+
+[data-ut-transition] > [data-ut-panel][data-ut-panel-leaving] {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
 [data-ut-panel][data-ut-panel-entering="fade"] {
   animation: ut-fade-in var(--ut-transition-duration) ease forwards;
 }
 
 [data-ut-panel][data-ut-panel-entering="slide"] {
-  animation: ut-slide-in var(--ut-transition-duration)
-    cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-/* Leaving panel — position absolute to overlay, not disrupt layout */
-[data-ut-panel][data-ut-panel-leaving] {
-  position: absolute !important;
-  inset-block-start: 0;
-  inset-inline-start: 0;
-  inset-inline-end: 0;
-  pointer-events: none;
-  opacity: 0;
+  animation: ut-slide-in var(--ut-transition-duration) cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes ut-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes ut-slide-in {
@@ -409,9 +467,9 @@
   }
 }
 
-/* RTL slide direction */
-[dir="rtl"] [data-ut-panel][data-ut-panel-entering="slide"],
-:dir(rtl) [data-ut-panel][data-ut-panel-entering="slide"] {
+/* Slide in from the opposite physical side when the inline direction is rtl. */
+:dir(rtl) [data-ut-panel][data-ut-panel-entering="slide"],
+[dir="rtl"] [data-ut-panel][data-ut-panel-entering="slide"] {
   animation-name: ut-slide-in-rtl;
 }
 
@@ -426,23 +484,22 @@
   }
 }
 
-/* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  [data-ut-list]::after {
-    transition-duration: 0.01ms !important;
+  [data-ut-list]::after,
+  [data-ut-tab],
+  [data-ut-scroll-btn] {
+    transition-duration: 0.01ms;
   }
 
   [data-ut-panel][data-ut-panel-entering] {
-    animation-duration: 0.01ms !important;
-  }
-
-  [data-ut-tab] {
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
   }
 }
 
-/* Vertical bordered — active tab bleeds into panel */
-[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
+/* Vertical bordered — active tab bleeds into the panel */
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"]
+  [data-ut-tab][data-ut-active] {
   border: 1px solid var(--ut-border-color);
   border-inline-end-color: transparent;
   border-block-end-color: var(--ut-border-color);
@@ -455,7 +512,8 @@
   background: var(--ut-panel-bg);
 }
 
-[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"]
+  [data-ut-tab][data-ut-active] {
   border: 1px solid var(--ut-border-color);
   border-inline-start-color: transparent;
   border-block-end-color: var(--ut-border-color);

@@ -1,111 +1,73 @@
 # Contributing to UltiTabs
 
-Thanks for your interest in contributing!
-
 ## Setup
 
 ```bash
-# Clone the repo
 git clone https://github.com/Matanmu/ultitabs.git
 cd ultitabs
-
-# Install dependencies (requires pnpm)
 pnpm install
+```
 
-# Build the library
-pnpm --filter ultitabs build
+Requires Node 18+ and pnpm 10 (see `packageManager` in the root `package.json`).
 
-# Watch mode
-pnpm --filter ultitabs dev
+## Checks
 
-# Run tests
-pnpm --filter ultitabs test
-
-# Run tests with coverage
+```bash
+pnpm --filter ultitabs format        # biome check --write
+pnpm --filter ultitabs format:check
+pnpm --filter ultitabs lint
+pnpm --filter ultitabs typecheck     # tsc --noEmit for src and for tests
+pnpm --filter ultitabs test          # vitest, jsdom
 pnpm --filter ultitabs test:coverage
+pnpm --filter ultitabs build         # minified ESM/CJS + ultitabs.min.css
+pnpm --filter ultitabs size
 ```
 
-## Project Structure
+CI runs format, lint, typecheck, tests with coverage, build, and size.
+
+## Layout
 
 ```
-lib/
-  src/
-    tabs.ts       — Core createTabs() logic
-    types.ts      — All TypeScript types
-    index.ts      — Entry point + auto-init
-    aria.ts       — WAI-ARIA setup + keyboard
-    indicator.ts  — GPU-composited indicator
-    utils.ts      — Shared utilities
-  css/
-    ultitabs.css  — Shipped CSS (variants, themes, transitions)
-  package.json
-  tsup.config.ts
-  vitest.config.ts
-  biome.json      — Linter/formatter config
+lib/src/tabs.ts        createTabs()
+lib/src/types.ts       public types
+lib/src/index.ts       entry + auto-init
+lib/src/aria.ts        WAI-ARIA and keyboard
+lib/src/indicator.ts   indicator geometry
+lib/src/utils.ts       shared helpers
+lib/css/ultitabs.css   source CSS
+lib/biome.json
+lib/vitest.config.ts
+lib/tsup.config.ts
+lib/tsconfig.json      library typecheck (tests excluded)
+lib/tsconfig.test.json test typecheck
 ```
 
-## Making Changes
-
-1. Fork the repo and create a branch: `git checkout -b my-fix`
-2. Make your changes in `lib/src/`
-3. Run quality checks:
-   ```bash
-   pnpm --filter ultitabs format      # Format code
-   pnpm --filter ultitabs lint        # Lint code
-   pnpm --filter ultitabs typecheck   # Type check
-   pnpm --filter ultitabs test        # Run tests
-   pnpm --filter ultitabs build       # Build
-   pnpm --filter ultitabs size        # Check bundle size
-   ```
-4. Add a changeset describing your change: `pnpm changeset`
-5. Commit and open a pull request
+The root package is a private pnpm workspace. Only `lib/` is published.
 
 ## Changesets
 
-This repo uses [Changesets](https://github.com/changesets/changesets) for versioning.
-
-When you open a PR that changes behavior, run:
+This repo versions with [Changesets](https://github.com/changesets/changesets). That is the only release path. Do not bump `lib/package.json` by hand and do not publish to npm from a branch.
 
 ```bash
 pnpm changeset
 ```
 
-Follow the prompts to select the package and describe the change.
-The CI will handle versioning and publishing when merged to `main`.
+Merging to `main` lets `.github/workflows/release.yml` open the version PR or publish it.
 
-## Code Style
+## Style
 
-- TypeScript strict mode throughout
-- No runtime dependencies in `ultitabs`
-- CSS uses logical properties for RTL support
-- CSS colors are tokenized as custom properties
-- All public APIs must be documented in the README
-- Format with Biome: `pnpm --filter ultitabs format`
+- TypeScript strict mode, no runtime dependencies
+- Biome formats and lints `lib/` (2-space indent, double quotes)
+- CSS uses logical properties and custom properties for color
+- Keep `README.md` and `lib/README.md` in sync
 
-## Testing
+## Size
 
-Tests use Vitest with happy-dom. Run with:
+size-limit budgets (minified + gzip), measured from the current build:
 
-```bash
-pnpm --filter ultitabs test           # Run once
-pnpm --filter ultitabs test --watch   # Watch mode
-pnpm --filter ultitabs test:coverage  # With coverage report
-```
-
-## Bundle Size
-
-We track bundle size with size-limit. The budgets are:
-
-- JS (minified + gzip): 2.5 kB
-- CSS (minified + gzip): 1.5 kB
-
-Check with: `pnpm --filter ultitabs size`
-
-## Reporting Bugs
-
-Open an issue at [github.com/Matanmu/ultitabs/issues](https://github.com/Matanmu/ultitabs/issues).
-Please include a minimal reproduction.
+- `dist/index.mjs` — 4.6 kB budget (about 4.33 kB today)
+- `css/ultitabs.min.css` — 2.1 kB budget (about 1.93 kB today)
 
 ## License
 
-By contributing, you agree your contributions will be licensed under the MIT License.
+By contributing, you agree your contributions are licensed under the MIT License.

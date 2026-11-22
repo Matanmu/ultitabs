@@ -143,12 +143,18 @@
   display: none;
 }
 
+/* Variant styles stop at this root: the list is a direct child, or the list
+   inside this root's own scroller. :where() wraps only the extra step so
+   specificity stays where 1.6 left it, and a nested widget is not restyled. */
+
 /* ── Variant: underline ── */
-[data-ut-variant="underline"] [data-ut-list] {
+[data-ut-variant="underline"] > [data-ut-list],
+[data-ut-variant="underline"] > :where([data-ut-scroller]) > [data-ut-list] {
   border-block-end: 1px solid var(--ut-border-color);
 }
 
-[data-ut-variant="underline"] [data-ut-list]::after {
+[data-ut-variant="underline"] > [data-ut-list]::after,
+[data-ut-variant="underline"] > :where([data-ut-scroller]) > [data-ut-list]::after {
   inset-block-end: 0;
   inset-block-start: auto;
   inset-inline-start: var(--ut-indicator-left, 0);
@@ -166,13 +172,15 @@
   --ut-tab-gap: 4px;
 }
 
-[data-ut-variant="pill"] [data-ut-list] {
+[data-ut-variant="pill"] > [data-ut-list],
+[data-ut-variant="pill"] > :where([data-ut-scroller]) > [data-ut-list] {
   background: var(--ut-pill-track-bg);
   border-radius: 9999px;
   padding: 4px;
 }
 
-[data-ut-variant="pill"] [data-ut-list]::after {
+[data-ut-variant="pill"] > [data-ut-list]::after,
+[data-ut-variant="pill"] > :where([data-ut-scroller]) > [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
   inset-inline-start: var(--ut-indicator-left, 0);
@@ -186,7 +194,8 @@
   transition-property: inset-inline-start, inset-block-start, width, height;
 }
 
-[data-ut-variant="pill"] [data-ut-tab] {
+[data-ut-variant="pill"] > [data-ut-list] > :where([data-ut-tab]),
+[data-ut-variant="pill"] > :where([data-ut-scroller]) > [data-ut-list] > :where([data-ut-tab]) {
   position: relative;
   z-index: 1;
   border-radius: 9999px;
@@ -197,11 +206,13 @@
   --ut-indicator-radius: 6px 6px 0 0;
 }
 
-[data-ut-variant="bordered"] [data-ut-list] {
+[data-ut-variant="bordered"] > [data-ut-list],
+[data-ut-variant="bordered"] > :where([data-ut-scroller]) > [data-ut-list] {
   border-block-end: 1px solid var(--ut-border-color);
 }
 
-[data-ut-variant="bordered"] [data-ut-list]::after {
+[data-ut-variant="bordered"] > [data-ut-list]::after,
+[data-ut-variant="bordered"] > :where([data-ut-scroller]) > [data-ut-list]::after {
   inset-block-end: 0;
   inset-block-start: auto;
   inset-inline-start: var(--ut-indicator-left, 0);
@@ -213,7 +224,11 @@
   transition-property: inset-inline-start, width;
 }
 
-[data-ut-variant="bordered"] [data-ut-tab][data-ut-active] {
+[data-ut-variant="bordered"] > :where([data-ut-list]) > [data-ut-tab][data-ut-active],
+[data-ut-variant="bordered"]
+  > :where([data-ut-scroller])
+  > :where([data-ut-list])
+  > [data-ut-tab][data-ut-active] {
   border: 1px solid var(--ut-border-color);
   border-block-end-color: transparent;
   border-start-start-radius: 6px;
@@ -234,18 +249,22 @@
   flex-direction: row-reverse;
 }
 
-[data-ut-orientation="vertical"] [data-ut-list] {
+[data-ut-orientation="vertical"] > [data-ut-list],
+[data-ut-orientation="vertical"] > :where([data-ut-scroller]) > [data-ut-list] {
   flex-direction: column;
   flex-shrink: 0;
 }
 
-[data-ut-orientation="vertical"] [data-ut-panel] {
+[data-ut-orientation="vertical"] > [data-ut-panel] {
   flex: 1;
   min-width: 0;
 }
 
 /* Vertical line indicator. Specificity stays below the vertical+pill rules. */
-[data-ut-orientation="vertical"][data-ut-side="left"] [data-ut-list]::after {
+[data-ut-orientation="vertical"][data-ut-side="left"] > [data-ut-list]::after,
+[data-ut-orientation="vertical"][data-ut-side="left"]
+  > :where([data-ut-scroller])
+  > [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
   inset-inline-start: auto;
@@ -255,7 +274,10 @@
   transition-property: inset-block-start, height;
 }
 
-[data-ut-orientation="vertical"][data-ut-side="right"] [data-ut-list]::after {
+[data-ut-orientation="vertical"][data-ut-side="right"] > [data-ut-list]::after,
+[data-ut-orientation="vertical"][data-ut-side="right"]
+  > :where([data-ut-scroller])
+  > [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
   inset-inline-start: 0;
@@ -265,22 +287,42 @@
   transition-property: inset-block-start, height;
 }
 
-[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="underline"] [data-ut-list],
-[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] [data-ut-list] {
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="underline"] > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="underline"]
+  > :where([data-ut-scroller])
+  > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"] > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"]
+  > :where([data-ut-scroller])
+  > [data-ut-list] {
   border-block-end: none;
   border-inline-end: 1px solid var(--ut-border-color);
 }
 
-[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="underline"] [data-ut-list],
-[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] [data-ut-list] {
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="underline"]
+  > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="underline"]
+  > :where([data-ut-scroller])
+  > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"] > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"]
+  > :where([data-ut-scroller])
+  > [data-ut-list] {
   border-block-end: none;
   border-inline-start: 1px solid var(--ut-border-color);
 }
 
-/* Vertical + pill. Four attributes so this beats the side-specific line indicator. */
-[data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="left"] [data-ut-list]::after,
+/* Vertical + pill. The extra attributes stay outside :where so this still beats the line indicator. */
+[data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="left"]
+  > [data-ut-list]::after,
+[data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="left"]
+  > :where([data-ut-scroller])
+  > [data-ut-list]::after,
 [data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="right"]
-  [data-ut-list]::after {
+  > [data-ut-list]::after,
+[data-ut-orientation="vertical"][data-ut-variant="pill"][data-ut-side="right"]
+  > :where([data-ut-scroller])
+  > [data-ut-list]::after {
   inset-block-start: var(--ut-indicator-top, 0);
   inset-block-end: auto;
   inset-inline-start: var(--ut-indicator-left, 0);
@@ -293,12 +335,19 @@
   transition-property: inset-block-start, inset-inline-start, width, height;
 }
 
-[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-list] {
+[data-ut-orientation="vertical"][data-ut-variant="pill"] > [data-ut-list],
+[data-ut-orientation="vertical"][data-ut-variant="pill"]
+  > :where([data-ut-scroller])
+  > [data-ut-list] {
   border-radius: 12px;
   padding: 4px;
 }
 
-[data-ut-orientation="vertical"][data-ut-variant="pill"] [data-ut-tab] {
+[data-ut-orientation="vertical"][data-ut-variant="pill"] > :where([data-ut-list]) > [data-ut-tab],
+[data-ut-orientation="vertical"][data-ut-variant="pill"]
+  > :where([data-ut-scroller])
+  > :where([data-ut-list])
+  > [data-ut-tab] {
   border-radius: 8px;
 }
 
@@ -311,7 +360,7 @@
   overflow: hidden;
 }
 
-[data-ut-scroller] [data-ut-list] {
+[data-ut-scroller] > [data-ut-list] {
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -366,11 +415,13 @@
   transform: rotate(135deg);
 }
 
-[data-ut-orientation="vertical"] [data-ut-scroll-btn="start"]::before {
+[data-ut-orientation="vertical"]
+  > [data-ut-scroller]
+  > :where([data-ut-scroll-btn="start"])::before {
   transform: rotate(-135deg);
 }
 
-[data-ut-orientation="vertical"] [data-ut-scroll-btn="end"]::before {
+[data-ut-orientation="vertical"] > [data-ut-scroller] > :where([data-ut-scroll-btn="end"])::before {
   transform: rotate(45deg);
 }
 
@@ -379,15 +430,23 @@
 }
 
 [data-ut-scroll-btn][data-ut-scroll-hidden] {
+  width: 0;
+  height: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border-width: 0;
+  margin: 0;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
 }
 
-[data-ut-orientation="vertical"] [data-ut-scroller] {
+[data-ut-orientation="vertical"] > [data-ut-scroller] {
   flex-direction: column;
 }
 
-[data-ut-orientation="vertical"] [data-ut-scroller] [data-ut-list] {
+[data-ut-orientation="vertical"] > [data-ut-scroller] > [data-ut-list] {
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -473,7 +532,12 @@
 
 /* Vertical bordered — active tab bleeds into the panel */
 [data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"]
-  [data-ut-tab][data-ut-active] {
+  > :where([data-ut-list])
+  > [data-ut-tab][data-ut-active],
+[data-ut-orientation="vertical"][data-ut-side="left"][data-ut-variant="bordered"]
+  > :where([data-ut-scroller])
+  > :where([data-ut-list])
+  > [data-ut-tab][data-ut-active] {
   border: 1px solid var(--ut-border-color);
   border-inline-end-color: transparent;
   border-block-end-color: var(--ut-border-color);
@@ -487,7 +551,12 @@
 }
 
 [data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"]
-  [data-ut-tab][data-ut-active] {
+  > :where([data-ut-list])
+  > [data-ut-tab][data-ut-active],
+[data-ut-orientation="vertical"][data-ut-side="right"][data-ut-variant="bordered"]
+  > :where([data-ut-scroller])
+  > :where([data-ut-list])
+  > [data-ut-tab][data-ut-active] {
   border: 1px solid var(--ut-border-color);
   border-inline-start-color: transparent;
   border-block-end-color: var(--ut-border-color);

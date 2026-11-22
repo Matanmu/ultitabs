@@ -5,7 +5,7 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/ultitabs)](https://bundlephobia.com/package/ultitabs)
 [![license](https://img.shields.io/npm/l/ultitabs)](./LICENSE)
 
-Zero-dependency tab library — accessible tabs, a CSS indicator, infinite nesting, and RTL. Minified + gzipped: 4.25 kB of JS and 1.88 kB of CSS.
+Zero-dependency tab library — accessible tabs, a CSS indicator, infinite nesting, and RTL. Minified + gzipped: 4.25 kB of JS and 2.04 kB of CSS.
 
 **[Live Demo & Docs →](https://phpstack-370615-6257546.cloudwaysapps.com/)**
 
@@ -324,7 +324,7 @@ The default palette is light. Set `data-ut-theme="dark"` on a section or an ance
 
 ## Features
 
-- **4.25 kB JS + 1.88 kB CSS** — minified + gzipped, zero runtime dependencies, ESM + CJS, TypeScript types
+- **4.25 kB JS + 2.04 kB CSS** — minified + gzipped, zero runtime dependencies, ESM + CJS, TypeScript types
 - **CSS indicator** — underline, pill, and bordered highlights follow the active tab
 - **WAI-ARIA tabs** — `role="tablist/tab/tabpanel"`, `aria-selected`, `aria-disabled`, roving tabindex, arrow keys
 - **Infinite nesting** — 3+ levels deep, independent keyboard scope per level
@@ -371,7 +371,7 @@ Add `dir="rtl"` to the section or any ancestor — everything flips automaticall
 
 | | UltiTabs | Others |
 |---|---|---|
-| Bundle size | **4.25 kB JS + 1.88 kB CSS** (min + gzip) | 5–30kb |
+| Bundle size | **4.25 kB JS + 2.04 kB CSS** (min + gzip) | 5–30kb |
 | Dependencies | **0** | 2–15 |
 | CSS-driven animation | **Yes** | Rarely |
 | Infinite nesting | **Yes** | No |

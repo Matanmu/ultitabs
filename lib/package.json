@@ -15,12 +15,7 @@
     "./css": "./css/ultitabs.css",
     "./css/ultitabs.min.css": "./css/ultitabs.min.css"
   },
-  "files": [
-    "dist",
-    "css",
-    "README.md",
-    "LICENSE"
-  ],
+  "files": ["dist", "css", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsup && pnpm build:css",
     "build:css": "lightningcss --minify --bundle css/ultitabs.css -o css/ultitabs.min.css",
@@ -46,11 +41,7 @@
     "tsup": "^8.3.0",
     "vitest": "^4.1.0"
   },
-  "sideEffects": [
-    "./dist/index.mjs",
-    "./dist/index.cjs",
-    "./css/*.css"
-  ],
+  "sideEffects": ["./dist/index.mjs", "./dist/index.cjs", "./css/*.css"],
   "size-limit": [
     {
       "path": "dist/index.mjs",

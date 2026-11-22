@@ -2,3 +2,13 @@ node_modules/
 dist/
 .turbo/
 *.tsbuildinfo
+.claude/SESSION.md
+lib/tsup.config.bundled_*.mjs
+
+# Test and build artifacts
+coverage/
+lib/coverage/
+lib/css/ultitabs.min.css
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

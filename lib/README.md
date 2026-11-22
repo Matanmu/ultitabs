@@ -5,7 +5,7 @@
 [![npm bundle size](https://img.shields.io/bundlephobia/minzip/ultitabs)](https://bundlephobia.com/package/ultitabs)
 [![license](https://img.shields.io/npm/l/ultitabs)](./LICENSE)
 
-Zero-dependency tab library — 1.5kb, full WAI-ARIA, GPU-animated indicator, infinite nesting, RTL, and AI-agent ready.
+Zero-dependency tab library — accessible tabs, a CSS indicator, infinite nesting, and RTL. Minified + gzipped: 4.25 kB of JS and 1.88 kB of CSS.
 
 **[Live Demo & Docs →](https://phpstack-370615-6257546.cloudwaysapps.com/)**
 
@@ -70,7 +70,7 @@ const tabs = createTabs({
 })
 
 tabs.setPath('features') // switch tab programmatically
-tabs.getPath()           // get current tab
+tabs.getPath()           // current tab path
 tabs.on('beforeChange', fn) // subscribe (returns unsubscribe fn)
 tabs.on('afterChange', fn)
 tabs.off('afterChange', fn) // explicit unsubscribe
@@ -107,7 +107,7 @@ createTabs({ el: '#my-tabs', persist: 'local' })
 
 ## Disabled Tabs
 
-Disable individual tabs via HTML attribute — they can't be clicked and are skipped by keyboard navigation:
+Disable individual tabs via HTML attribute — they can't be clicked, keyboard navigation skips them, and `setPath()` refuses them:
 
 ```html
 <div data-ut-section>
@@ -204,7 +204,7 @@ unsub()                       // via returned function
 tabs.off('afterChange', myFn) // or via .off()
 ```
 
-> `onChange` is deprecated — use `beforeChange` instead. It still works.
+`onChange` still runs before the switch and can return `false`, same as 1.5. It is deprecated: the first time you pass it, development builds log a one-time warning. Use `beforeChange`.
 
 ---
 
@@ -311,26 +311,34 @@ Override any visual with a CSS custom property — no JS required:
 | `--ut-tab-color` | `#6b7280` | Inactive tab text |
 | `--ut-tab-active-color` | `#111827` | Active tab text |
 | `--ut-tab-padding` | `0.625rem 1rem` | Tab button padding |
+| `--ut-border-color` | `#e5e7eb` | Underline and bordered strokes |
+| `--ut-panel-bg` | `#fff` | Bordered active tab and panel surface |
+| `--ut-pill-track-bg` | `#f3f4f6` | Pill track |
+| `--ut-pill-active-bg` | `#fff` | Active pill highlight |
+| `--ut-focus-ring-color` | indicator color | Focus ring |
+| `--ut-focus-ring-offset` | `2px` | Inset focus ring, so overflow does not clip it |
+
+The default palette is light. Set `data-ut-theme="dark"` on a section or an ancestor for the dark palette. `data-ut-theme="light"` on a section forces light under a dark ancestor. Dark mode does not follow the operating system on its own.
 
 ---
 
 ## Features
 
-- **1.5kb** — zero dependencies, ESM + CJS, full TypeScript types
-- **GPU-composited indicator** — CSS `transform`-based animation, 60fps always
-- **Full WAI-ARIA** — `role="tablist/tab/tabpanel"`, `aria-selected`, roving tabindex
+- **4.25 kB JS + 1.88 kB CSS** — minified + gzipped, zero runtime dependencies, ESM + CJS, TypeScript types
+- **CSS indicator** — underline, pill, and bordered highlights follow the active tab
+- **WAI-ARIA tabs** — `role="tablist/tab/tabpanel"`, `aria-selected`, `aria-disabled`, roving tabindex, arrow keys
 - **Infinite nesting** — 3+ levels deep, independent keyboard scope per level
 - **Three variants** — underline, pill, bordered — one prop to switch
 - **Full RTL support** — automatic, zero-config
 - **Vertical orientation** — sidebar tabs with left/right placement
-- **Programmatic control** — `setPath()` + `onChange` callback
+- **Programmatic control** — `setPath()`, `getPath()`, `beforeChange`, and `afterChange`
 - **URL sync** — `syncUrl: true` keeps the active tab in the URL hash
 - **Persist** — `persist: 'session' | 'local'` remembers active tab across reloads
 - **Disabled tabs** — `data-ut-disabled` attribute to disable individual tabs
 - **Overflow scroll** — `overflow: true` adds scroll arrows when tabs overflow
 - **Panel transitions** — `transition: 'fade' | 'slide'` animates panel switches
 - **Equal height** — `equalHeight` / `equalPanelHeight` eliminates layout shift between panels
-- **Cancellable onChange** — return `false` from `onChange` to block a tab switch
+- **Cancellable switches** — return `false` from `beforeChange` (or the deprecated `onChange`) to block a tab switch
 - **15+ CSS custom properties** — theme every pixel without touching JS
 
 ---
@@ -363,11 +371,11 @@ Add `dir="rtl"` to the section or any ancestor — everything flips automaticall
 
 | | UltiTabs | Others |
 |---|---|---|
-| Bundle size | **1.5kb** | 5–30kb |
+| Bundle size | **4.25 kB JS + 1.88 kB CSS** (min + gzip) | 5–30kb |
 | Dependencies | **0** | 2–15 |
 | CSS-driven animation | **Yes** | Rarely |
 | Infinite nesting | **Yes** | No |
-| ARIA compliant | **100%** | Partial |
+| ARIA tabs pattern | **Yes** | Partial |
 | AI agent ready | **Yes — built for it** | No |
 | RTL support | **Full, automatic** | Rare / manual |
 

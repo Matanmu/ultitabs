@@ -28,15 +28,19 @@ export interface TabsConfig {
   transition?: Transition;
   equalHeight?: boolean;
   equalPanelHeight?: boolean;
-  /** @deprecated Use `beforeChange` instead. Called before state change; return false to cancel. */
-  onChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
+  /**
+   * @deprecated Use `beforeChange`. Still called before the switch and can
+   * return `false` to cancel. Passing it logs a one-time warning outside production.
+   */
+  onChange?: TabBeforeChangeHandler;
   /** Called before state change. Return false to cancel the switch. */
-  beforeChange?: (path: TabPath, prevPath: TabPath | null) => boolean | void;
+  beforeChange?: TabBeforeChangeHandler;
   /** Called after state change and all listeners have been notified. */
-  afterChange?: (path: TabPath, prevPath: TabPath | null) => void;
+  afterChange?: TabChangeHandler;
 }
 
 export interface TabsInstance {
+  /** Active tab path. Empty only when the widget has no selectable tab. */
   getPath(): TabPath;
   setPath(path: TabPath): void;
   destroy(): void;
@@ -53,4 +57,6 @@ export interface TabSection {
   list: HTMLElement;
   tabs: HTMLElement[];
   panels: HTMLElement[];
+  /** Maps tab index to its panel. Value matches win; everything else stays index-paired. */
+  tabPanelMap: Map<number, HTMLElement>;
 }

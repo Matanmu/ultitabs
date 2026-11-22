@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  build:
-    name: Build
+  ci:
+    name: CI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,5 +22,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Format
+        run: pnpm --filter ultitabs format:check
+
+      - name: Lint
+        run: pnpm --filter ultitabs lint
+
+      - name: Type check
+        run: pnpm --filter ultitabs typecheck
+
+      - name: Test with coverage
+        run: pnpm --filter ultitabs test:coverage
+
       - name: Build
         run: pnpm build
+
+      - name: Size check
+        run: pnpm --filter ultitabs size

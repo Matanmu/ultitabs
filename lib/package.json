@@ -1,6 +1,6 @@
 {
   "name": "ultitabs",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Zero-dependency tab library with accessible, animated tabs and RTL support",
   "type": "module",
   "main": "./dist/index.cjs",

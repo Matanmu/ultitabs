@@ -7,7 +7,7 @@
 
 Zero-dependency tab library — accessible tabs, a CSS indicator, infinite nesting, and RTL. Minified + gzipped: 4.25 kB of JS and 2.04 kB of CSS.
 
-**[Live Demo & Docs →](https://phpstack-370615-6257546.cloudwaysapps.com/)**
+**[Live Demo & Docs →](https://matan.pro/ultitabs/)**
 
 ---
 
